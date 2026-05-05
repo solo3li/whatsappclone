@@ -47,7 +47,7 @@ const Waveform = ({ position, duration, activeColor, inactiveColor, meteringData
   const currentBars = meteringData && meteringData.length > 0 ? meteringData : staticBars;
   
   const paddedBars = currentBars.length < 40 
-    ? [...Array(40 - currentBars.length).fill(5), ...currentBars]
+    ? [...Array(40 - currentBars.length).fill(3), ...currentBars]
     : currentBars.slice(currentBars.length - 40);
 
   const progress = duration > 0 ? position / duration : 0;
