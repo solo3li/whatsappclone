@@ -2,7 +2,7 @@
 
 This directory contains the source code for a WhatsApp clone, organized into a modern **Senior Full Stack** architecture with an Expo-based React Native frontend (`whats`) and an ASP.NET Core backend (`server`).
 
-## Project Structure
+## Project Structure.
 
 - **`whats/`**: The frontend application. Follows **Senior Full Stack Expo** standards. Built using the [Expo framework](https://expo.dev/) and [Expo Router](https://docs.expo.dev/router/introduction/).
 - **`server/`**: The backend services directory. Built using **ASP.NET Core 10.0** (C#) for high-performance API development and real-time communication.
