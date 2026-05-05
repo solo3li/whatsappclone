@@ -12,7 +12,7 @@ This directory contains the source code for a WhatsApp clone, primarily organize
 - **Framework**: React Native with Expo (Version ~54.0.33)
 - **Language**: TypeScript (`~5.9.2`)
 - **Routing**: Expo Router (`~6.0.23`)
-- **Media/File Pickers**: `expo-image-picker`, `expo-document-picker`
+- **Media/File Pickers & Audio**: `expo-image-picker`, `expo-document-picker`, `expo-av`
 - **UI & Animations**: `react-native-reanimated`, `react-native-gesture-handler`, `expo-symbols`, `expo-image`
 - **Linting**: ESLint (`^9.25.0`) with `eslint-config-expo`
 - **New Architecture**: The project has Expo's New Architecture enabled (`newArchEnabled: true`).
@@ -57,6 +57,7 @@ cd whats
 4.  **Hardware & Native Features**: We leverage modern Expo libraries to access native features rather than building custom bridges.
     - Used `expo-image-picker` for robust camera interactions.
     - Used `expo-document-picker` for comprehensive file handling.
+    - Used `expo-av` for WhatsApp-style audio recording, playback, and inline previews.
 5.  **Multiagent & Advanced AI Skills Integration**:
     - When extending features across the tech stack (e.g., bridging frontend with the `server/` directory), deploy multiagent workflows that combine specialized React Native UI synthesis with robust Node.js/Python server-side generation.
     - Ensure AI tools generate idiomatically correct React Native primitives and strictly follow Expo SDK conventions instead of older Bare React Native workflows.

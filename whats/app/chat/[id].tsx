@@ -1,13 +1,76 @@
 import { View, Text, StyleSheet, ImageBackground, FlatList, TextInput, KeyboardAvoidingView, Platform, useColorScheme, Image, TouchableOpacity } from 'react-native';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useLocalSearchParams, Stack } from 'expo-router';
-import Animated, { FadeInUp, SlideInRight } from 'react-native-reanimated';
+import Animated, { FadeInUp, SlideInRight, useSharedValue, useAnimatedStyle, withRepeat, withTiming } from 'react-native-reanimated';
 import * as ImagePicker from 'expo-image-picker';
 import * as DocumentPicker from 'expo-document-picker';
 import EmojiPicker from 'rn-emoji-keyboard';
+import { Audio } from 'expo-av';
 import { messages, chats } from '../../data/dummy';
 import Colors from '../../constants/Colors';
 import { Ionicons } from '@expo/vector-icons';
+
+const AudioMessage = ({ uri, duration, colors }: { uri: string, duration: number, colors: any }) => {
+  const [sound, setSound] = useState<Audio.Sound | null>(null);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [position, setPosition] = useState(0);
+
+  const formatTime = (millis: number) => {
+    const totalSeconds = Math.floor(millis / 1000);
+    const minutes = Math.floor(totalSeconds / 60);
+    const seconds = totalSeconds % 60;
+    return `${minutes}:${seconds < 10 ? '0' : ''}${seconds}`;
+  };
+
+  async function togglePlay() {
+    if (sound) {
+      if (isPlaying) {
+        await sound.pauseAsync();
+      } else {
+        await sound.playAsync();
+      }
+    } else {
+      const { sound: newSound } = await Audio.Sound.createAsync(
+        { uri },
+        { shouldPlay: true }
+      );
+      newSound.setOnPlaybackStatusUpdate((status: any) => {
+        if (status.isLoaded) {
+          setPosition(status.positionMillis);
+          setIsPlaying(status.isPlaying);
+          if (status.didJustFinish) {
+            setIsPlaying(false);
+            newSound.setPositionAsync(0);
+            setPosition(0);
+          }
+        }
+      });
+      setSound(newSound);
+    }
+  }
+
+  useEffect(() => {
+    return () => {
+      if (sound) {
+        sound.unloadAsync().catch(() => {});
+      }
+    };
+  }, [sound]);
+
+  return (
+    <View style={{ flexDirection: 'row', alignItems: 'center', width: 220, paddingVertical: 5, paddingHorizontal: 2 }}>
+      <TouchableOpacity onPress={togglePlay}>
+        <Ionicons name={isPlaying ? "pause" : "play"} size={26} color={colors.secondaryText} />
+      </TouchableOpacity>
+      <View style={{ flex: 1, marginHorizontal: 10, height: 3, backgroundColor: colors.divider, borderRadius: 2 }}>
+        <View style={{ width: `${duration ? (position / duration) * 100 : 0}%`, height: '100%', backgroundColor: colors.tint, borderRadius: 2 }} />
+      </View>
+      <View style={{ width: 40 }}>
+        <Text style={{ fontSize: 11, color: colors.secondaryText }}>{formatTime(position > 0 ? position : (duration || 0))}</Text>
+      </View>
+    </View>
+  );
+};
 
 export default function ChatScreen() {
   const { id } = useLocalSearchParams();
@@ -20,6 +83,135 @@ export default function ChatScreen() {
   const [chatMessages, setChatMessages] = useState(initialMessages);
   const [inputText, setInputText] = useState('');
   const [isEmojiPickerOpen, setIsEmojiPickerOpen] = useState(false);
+
+  // Audio Recording State
+  const [recording, setRecording] = useState<Audio.Recording | null>(null);
+  const [isRecording, setIsRecording] = useState(false);
+  const [recordingDuration, setRecordingDuration] = useState(0);
+  const [previewUri, setPreviewUri] = useState<string | null>(null);
+  const [previewSound, setPreviewSound] = useState<Audio.Sound | null>(null);
+  const [isPlayingPreview, setIsPlayingPreview] = useState(false);
+
+  const pulseAnim = useSharedValue(1);
+  useEffect(() => {
+    if (isRecording) {
+      pulseAnim.value = withRepeat(withTiming(1.5, { duration: 500 }), -1, true);
+    } else {
+      pulseAnim.value = 1;
+    }
+  }, [isRecording]);
+
+  const pulseStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: pulseAnim.value }]
+  }));
+
+  const formatTime = (millis: number) => {
+    const totalSeconds = Math.floor(millis / 1000);
+    const minutes = Math.floor(totalSeconds / 60);
+    const seconds = totalSeconds % 60;
+    return `${minutes}:${seconds < 10 ? '0' : ''}${seconds}`;
+  };
+
+  useEffect(() => {
+    return () => {
+      if (previewSound) previewSound.unloadAsync().catch(() => {});
+      if (recording) recording.stopAndUnloadAsync().catch(() => {});
+    };
+  }, [previewSound, recording]);
+
+  const startRecording = async () => {
+    try {
+      const permission = await Audio.requestPermissionsAsync();
+      if (permission.status === 'granted') {
+        await Audio.setAudioModeAsync({
+          allowsRecordingIOS: true,
+          playsInSilentModeIOS: true,
+        });
+        const { recording } = await Audio.Recording.createAsync(
+          Audio.RecordingOptionsPresets.HIGH_QUALITY
+        );
+        setRecording(recording);
+        setIsRecording(true);
+        setRecordingDuration(0);
+        recording.setOnRecordingStatusUpdate((status) => {
+          if (status.isRecording) {
+            setRecordingDuration(status.durationMillis);
+          }
+        });
+      } else {
+        alert('Microphone permission is required');
+      }
+    } catch (err) {
+      console.error('Failed to start recording', err);
+    }
+  };
+
+  const stopRecording = async () => {
+    if (!recording) return;
+    setIsRecording(false);
+    try {
+      await recording.stopAndUnloadAsync();
+      await Audio.setAudioModeAsync({ allowsRecordingIOS: false });
+      const uri = recording.getURI();
+      setPreviewUri(uri);
+    } catch (error) {
+      console.error('Failed to stop recording', error);
+    }
+    setRecording(null);
+  };
+
+  const playPreview = async () => {
+    if (previewSound) {
+      if (isPlayingPreview) {
+        await previewSound.pauseAsync();
+        setIsPlayingPreview(false);
+      } else {
+        await previewSound.playAsync();
+        setIsPlayingPreview(true);
+      }
+    } else if (previewUri) {
+      const { sound } = await Audio.Sound.createAsync(
+        { uri: previewUri },
+        { shouldPlay: true },
+        (status: any) => {
+          if (status.isLoaded) {
+            setIsPlayingPreview(status.isPlaying);
+            if (status.didJustFinish) {
+              setIsPlayingPreview(false);
+              sound.setPositionAsync(0);
+            }
+          }
+        }
+      );
+      setPreviewSound(sound);
+    }
+  };
+
+  const cancelPreview = () => {
+    if (previewSound) {
+      previewSound.unloadAsync();
+      setPreviewSound(null);
+    }
+    setPreviewUri(null);
+    setIsPlayingPreview(false);
+    setRecordingDuration(0);
+  };
+
+  const sendAudio = () => {
+    if (previewUri) {
+      const newMessage = {
+        id: Math.random().toString(),
+        text: '',
+        audio: previewUri,
+        duration: recordingDuration,
+        sender: 'Me',
+        time: '12:00 PM', // Using dummy date
+        isMe: true
+      };
+      setChatMessages(prev => [...prev, newMessage]);
+      cancelPreview();
+    }
+  };
 
   const handleSend = () => {
     if (!inputText.trim()) return;
@@ -58,7 +250,6 @@ export default function ChatScreen() {
   };
 
   const handleFilePick = async () => {
-    // Instead of general documents, let's open the image gallery for the attach button for better UX
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ['images'],
       quality: 0.8,
@@ -99,8 +290,11 @@ export default function ChatScreen() {
           {item.image && (
             <Image 
               source={{ uri: item.image }} 
-              style={[styles.messageImage, { marginBottom: item.text ? 5 : 0 }]} 
+              style={[styles.messageImage, { marginBottom: item.text || item.audio ? 5 : 0 }]} 
             />
+          )}
+          {item.audio && (
+            <AudioMessage uri={item.audio} duration={item.duration} colors={colors} />
           )}
           {item.text ? <Text style={[styles.messageText, { color: colors.text }]}>{item.text}</Text> : null}
           <Text style={[styles.messageTime, { color: colors.secondaryText }]}>{item.time}</Text>
@@ -145,30 +339,67 @@ export default function ChatScreen() {
             contentContainerStyle={styles.messageContainer}
           />
           <Animated.View entering={FadeInUp.duration(400)} style={styles.inputContainer}>
-            <View style={[styles.inputInner, { backgroundColor: colors.background }]}>
-              <TouchableOpacity onPress={() => setIsEmojiPickerOpen(true)}>
-                <Ionicons name="happy-outline" size={24} color={colors.secondaryText} style={styles.icon} />
-              </TouchableOpacity>
-              <TextInput 
-                style={[styles.input, { color: colors.text }]} 
-                placeholder="Message" 
-                placeholderTextColor={colors.secondaryText}
-                multiline
-                value={inputText}
-                onChangeText={setInputText}
-              />
-              <TouchableOpacity onPress={handleFilePick}>
-                <Ionicons name="attach" size={24} color={colors.secondaryText} style={styles.icon} />
-              </TouchableOpacity>
-              <TouchableOpacity onPress={handleCamera}>
-                <Ionicons name="camera-outline" size={24} color={colors.secondaryText} style={styles.icon} />
-              </TouchableOpacity>
-            </View>
+            {previewUri ? (
+              <View style={[styles.inputInner, { backgroundColor: colors.background, justifyContent: 'space-between', paddingHorizontal: 15 }]}>
+                <TouchableOpacity onPress={cancelPreview} style={{ padding: 5 }}>
+                  <Ionicons name="trash-outline" size={24} color="#FF3B30" />
+                </TouchableOpacity>
+                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                  <TouchableOpacity onPress={playPreview} style={{ marginRight: 15 }}>
+                    <Ionicons name={isPlayingPreview ? "pause-circle" : "play-circle"} size={32} color={colors.secondaryText} />
+                  </TouchableOpacity>
+                  <Text style={{ color: colors.text, fontSize: 16 }}>{formatTime(recordingDuration)}</Text>
+                </View>
+              </View>
+            ) : isRecording ? (
+              <View style={[styles.inputInner, { backgroundColor: colors.background, paddingHorizontal: 15 }]}>
+                 <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
+                   <Animated.View style={[pulseStyle, { width: 12, height: 12, borderRadius: 6, backgroundColor: '#FF3B30', marginRight: 10 }]} />
+                   <Text style={{ color: colors.text, fontSize: 16, width: 60 }}>{formatTime(recordingDuration)}</Text>
+                   <View style={{ flex: 1, alignItems: 'flex-end', paddingRight: 10 }}>
+                     <Text style={{ color: colors.secondaryText, fontSize: 14 }}>Tap stop to preview</Text>
+                   </View>
+                 </View>
+              </View>
+            ) : (
+              <View style={[styles.inputInner, { backgroundColor: colors.background }]}>
+                <TouchableOpacity onPress={() => setIsEmojiPickerOpen(true)}>
+                  <Ionicons name="happy-outline" size={24} color={colors.secondaryText} style={styles.icon} />
+                </TouchableOpacity>
+                <TextInput 
+                  style={[styles.input, { color: colors.text }]} 
+                  placeholder="Message" 
+                  placeholderTextColor={colors.secondaryText}
+                  multiline
+                  value={inputText}
+                  onChangeText={setInputText}
+                />
+                <TouchableOpacity onPress={handleFilePick}>
+                  <Ionicons name="attach" size={24} color={colors.secondaryText} style={styles.icon} />
+                </TouchableOpacity>
+                <TouchableOpacity onPress={handleCamera}>
+                  <Ionicons name="camera-outline" size={24} color={colors.secondaryText} style={styles.icon} />
+                </TouchableOpacity>
+              </View>
+            )}
+
             <TouchableOpacity 
               style={[styles.micButton, { backgroundColor: colors.tint }]}
-              onPress={inputText.trim() ? handleSend : undefined}
+              onPress={
+                previewUri 
+                  ? sendAudio 
+                  : inputText.trim() 
+                    ? handleSend 
+                    : isRecording 
+                      ? stopRecording 
+                      : startRecording
+              }
             >
-              <Ionicons name={inputText.trim() ? "send" : "mic"} size={24} color="#fff" />
+              <Ionicons 
+                name={previewUri ? "send" : inputText.trim() ? "send" : isRecording ? "stop" : "mic"} 
+                size={24} 
+                color="#fff" 
+              />
             </TouchableOpacity>
           </Animated.View>
         </KeyboardAvoidingView>
