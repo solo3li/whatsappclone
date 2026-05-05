@@ -1,0 +1,90 @@
+name: Backend CI/CD (Development)
+
+on:
+  push:
+    branches: [ dev, 'feature/**' ]
+    paths:
+      - 'server/**'
+  workflow_dispatch:
+
+env:
+  DOCKER_IMAGE: ${{ secrets.DOCKER_USERNAME }}/whatsapp-clone-backend
+  CONTAINER_NAME: whatsapp-backend-dev
+  PORT_MAPPING: 8081:8080 # Dev runs on 8081 to avoid production collision
+
+jobs:
+  # --- Phase 1: Rapid Build ---
+  build:
+    name: Build & Dev Artifact
+    runs-on: ubuntu-latest
+    steps:
+      - name: 🛒 Checkout Code
+        uses: actions/checkout@v4
+
+      - name: ⚙️ Setup .NET 10
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+          cache: true
+          cache-dependency-path: server/WhatsappClone.slnx
+
+      - name: 📦 Restore & Build
+        run: |
+          dotnet restore server/WhatsappClone.slnx
+          dotnet build server/WhatsappClone.slnx --configuration Debug --no-restore
+
+      - name: 🐋 Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: 🔐 Login to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+
+      - name: 🏗️ Build and Push Dev Image
+        uses: docker/build-push-action@v5
+        with:
+          context: ./server
+          push: true
+          tags: ${{ env.DOCKER_IMAGE }}:dev
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  # --- Phase 2: Dev Environment Deployment ---
+  deploy:
+    name: Deploy to Dev Sandbox
+    needs: build
+    runs-on: ubuntu-latest
+    environment: development
+    steps:
+      - name: 🚀 Deploy to VPS (Dev Instance)
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: 47.84.69.17
+          username: root
+          password: ${{ secrets.VPS_PASSWORD }}
+          script: |
+            echo "--- Starting DEV Deployment ---"
+            
+            # 1. Pull dev image
+            docker pull ${{ env.DOCKER_IMAGE }}:dev
+            
+            # 2. Force remove dev container
+            docker rm -f ${{ env.CONTAINER_NAME }} || true
+            
+            # 3. Run Dev instance (different port, different volume)
+            docker run -d \
+              --name ${{ env.CONTAINER_NAME }} \
+              --restart on-failure \
+              -p ${{ env.PORT_MAPPING }} \
+              -e HOST_MAIL="${{ secrets.HOST_MAIL }}" \
+              -e HOST_MAIL_PASS="${{ secrets.HOST_MAIL_PASS }}" \
+              -e ConnectionStrings__DefaultConnection="Data Source=/app/data/whatsapp_dev.db" \
+              -v /root/whatsapp-data-dev:/app/data \
+              ${{ env.DOCKER_IMAGE }}:dev
+            
+            # 4. Cleanup
+            docker image prune -f
+            
+            echo "--- DEV Deployment Complete on Port 8081 ---"
