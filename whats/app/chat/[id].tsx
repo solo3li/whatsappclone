@@ -6,9 +6,41 @@ import * as ImagePicker from 'expo-image-picker';
 import * as DocumentPicker from 'expo-document-picker';
 import EmojiPicker from 'rn-emoji-keyboard';
 import { Audio } from 'expo-av';
+import * as Sharing from 'expo-sharing';
 import { messages, chats } from '../../data/dummy';
 import Colors from '../../constants/Colors';
 import { Ionicons } from '@expo/vector-icons';
+
+const FileMessage = ({ name, uri, size, colors }: { name: string, uri: string, size: string, colors: any }) => {
+  const handleDownload = async () => {
+    try {
+      if (await Sharing.isAvailableAsync()) {
+        await Sharing.shareAsync(uri);
+      } else {
+        alert("Sharing/Downloading is not available on this platform");
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  return (
+    <TouchableOpacity onPress={handleDownload} style={{ width: 240, padding: 5 }}>
+      <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: colors.divider, padding: 10, borderRadius: 8 }}>
+        <View style={{ width: 40, height: 40, backgroundColor: colors.tint, borderRadius: 20, justifyContent: 'center', alignItems: 'center', marginRight: 10 }}>
+          <Ionicons name="document-text" size={24} color="#fff" />
+        </View>
+        <View style={{ flex: 1 }}>
+          <Text style={{ color: colors.text, fontWeight: 'bold', fontSize: 14 }} numberOfLines={1} ellipsizeMode="middle">{name}</Text>
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 4 }}>
+            <Text style={{ color: colors.secondaryText, fontSize: 12 }}>{size}</Text>
+            <Text style={{ color: colors.secondaryText, fontSize: 12 }}>DOC</Text>
+          </View>
+        </View>
+      </View>
+    </TouchableOpacity>
+  );
+};
 
 const AudioMessage = ({ uri, duration, colors }: { uri: string, duration: number, colors: any }) => {
   const [sound, setSound] = useState<Audio.Sound | null>(null);
@@ -253,9 +285,14 @@ export default function ChatScreen() {
     try {
       const result = await DocumentPicker.getDocumentAsync({});
       if (!result.canceled && result.assets && result.assets.length > 0) {
+        const asset = result.assets[0];
+        const sizeStr = asset.size ? (asset.size / 1024 / 1024).toFixed(2) + ' MB' : 'Unknown size';
         const newMessage = {
           id: Math.random().toString(),
-          text: '📄 ' + result.assets[0].name,
+          text: '',
+          fileName: asset.name,
+          fileUri: asset.uri,
+          fileSize: sizeStr,
           sender: 'Me',
           time: '12:00 PM', // Using dummy date
           isMe: true
@@ -290,11 +327,14 @@ export default function ChatScreen() {
           {item.image && (
             <Image 
               source={{ uri: item.image }} 
-              style={[styles.messageImage, { marginBottom: item.text || item.audio ? 5 : 0 }]} 
+              style={[styles.messageImage, { marginBottom: item.text || item.audio || item.fileUri ? 5 : 0 }]} 
             />
           )}
           {item.audio && (
             <AudioMessage uri={item.audio} duration={item.duration} colors={colors} />
+          )}
+          {item.fileUri && (
+            <FileMessage name={item.fileName} uri={item.fileUri} size={item.fileSize} colors={colors} />
           )}
           {item.text ? <Text style={[styles.messageText, { color: colors.text }]}>{item.text}</Text> : null}
           <Text style={[styles.messageTime, { color: colors.secondaryText }]}>{item.time}</Text>
