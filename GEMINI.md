@@ -69,6 +69,68 @@ The application follows a structured navigation flow using Expo Router. Below is
 - **Contact Info (`user/[id].tsx`)**: Detailed user profile view with blocking/unblocking logic and quick call/chat actions.
 - **Select Contact (`contacts.tsx`)**: Searchable contact list to initiate new chat sessions.
 
+## Database Schema (ERD)
+
+The **ASP.NET Core** backend will utilize **Entity Framework Core** with the following relational model to support real-time features:
+
+### Entities
+
+1.  **Users**
+    *   `Id` (PK, Guid)
+    *   `Email` (String, Unique)
+    *   `Name` (String)
+    *   `AvatarUrl` (String)
+    *   `Status` (String) - e.g., "Available", "Busy"
+    *   `CreatedAt` (DateTime)
+
+2.  **Chats**
+    *   `Id` (PK, Guid)
+    *   `IsGroup` (Boolean)
+    *   `CreatedAt` (DateTime)
+
+3.  **ChatParticipants**
+    *   `ChatId` (FK, PK)
+    *   `UserId` (FK, PK)
+    *   `JoinedAt` (DateTime)
+
+4.  **Messages**
+    *   `Id` (PK, Guid)
+    *   `ChatId` (FK)
+    *   `SenderId` (FK)
+    *   `Content` (String, Nullable)
+    *   `MessageType` (Enum) - Text, Image, Audio, File
+    *   `MediaUrl` (String, Nullable)
+    *   `FileName` (String, Nullable)
+    *   `FileSize` (String, Nullable)
+    *   `ReplyToId` (FK, Nullable) - Self-reference for replies
+    *   `IsForwarded` (Boolean)
+    *   `Timestamp` (DateTime)
+
+5.  **Statuses**
+    *   `Id` (PK, Guid)
+    *   `UserId` (FK)
+    *   `ImageUrl` (String)
+    *   `CreatedAt` (DateTime) - Expire after 24h logic
+
+6.  **StatusReactions**
+    *   `Id` (PK, Guid)
+    *   `StatusId` (FK)
+    *   `UserId` (FK)
+    *   `Emoji` (String)
+    *   `Timestamp` (DateTime)
+
+7.  **Blocks**
+    *   `BlockerId` (FK, PK)
+    *   `BlockedId` (FK, PK)
+    *   `CreatedAt` (DateTime)
+
+### Relationships
+- **Users <1:N> Messages**: A user can send many messages.
+- **Chats <1:N> Messages**: A chat contains many messages.
+- **Users <N:N> Chats**: Handled via `ChatParticipants` junction table.
+- **Users <1:N> Statuses**: A user can post multiple status updates.
+- **Statuses <1:N> StatusReactions**: A status can have many emoji reactions.
+
 ## Development Conventions & Senior Expo Practices
 
 1.  **Routing**: The application uses Expo's file-based routing. All new screens and navigation layouts should be placed inside the `whats/app` directory.
