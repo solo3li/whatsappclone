@@ -85,11 +85,12 @@ var app = builder.Build();
 // Temporarily enable Developer Exception Page in Production to debug the 500 error
 app.UseDeveloperExceptionPage();
 
-if (app.Environment.IsDevelopment())
-{
-    app.UseSwagger();
-    app.UseSwaggerUI();
-}
+// Always enable Swagger for testing during this phase
+app.UseSwagger();
+app.UseSwaggerUI(c => {
+    c.SwaggerEndpoint("/swagger/v1/swagger.json", "Whatsapp Clone API v1");
+    c.RoutePrefix = "swagger"; // Access at /swagger
+});
 
 app.UseCors();
 
