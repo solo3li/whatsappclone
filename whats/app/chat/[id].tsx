@@ -154,6 +154,7 @@ export default function ChatScreen() {
   const [previewUri, setPreviewUri] = useState<string | null>(null);
   const [previewSound, setPreviewSound] = useState<Audio.Sound | null>(null);
   const [isPlayingPreview, setIsPlayingPreview] = useState(false);
+  const [previewPosition, setPreviewPosition] = useState(0);
 
   const pulseAnim = useSharedValue(1);
   useEffect(() => {
@@ -255,10 +256,12 @@ export default function ChatScreen() {
         { shouldPlay: true },
         (status: any) => {
           if (status.isLoaded) {
+            setPreviewPosition(status.positionMillis);
             setIsPlayingPreview(status.isPlaying);
             if (status.didJustFinish) {
               setIsPlayingPreview(false);
               sound.setPositionAsync(0);
+              setPreviewPosition(0);
             }
           }
         }
@@ -274,6 +277,7 @@ export default function ChatScreen() {
     }
     setPreviewUri(null);
     setIsPlayingPreview(false);
+    setPreviewPosition(0);
     setRecordingDuration(0);
     setMeteringData([]);
   };
@@ -437,14 +441,14 @@ export default function ChatScreen() {
                 <TouchableOpacity onPress={playPreview} style={{ marginLeft: 5 }}>
                   <Ionicons name={isPlayingPreview ? "pause-circle" : "play-circle"} size={32} color={colors.secondaryText} />
                 </TouchableOpacity>
-                <Waveform position={0} duration={recordingDuration} activeColor={colors.tint} inactiveColor={colors.divider} />
+                <Waveform position={previewPosition} duration={recordingDuration} activeColor={colors.tint} inactiveColor={colors.divider} meteringData={meteringData} />
               </View>
             ) : isRecording ? (
               <View style={[styles.inputInner, { backgroundColor: colors.background, paddingHorizontal: 15 }]}>
                  <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
                    <Animated.View style={[pulseStyle, { width: 12, height: 12, borderRadius: 6, backgroundColor: '#FF3B30', marginRight: 10 }]} />
                    <Text style={{ color: colors.text, fontSize: 16, width: 60 }}>{formatTime(recordingDuration)}</Text>
-                   <Waveform position={recordingDuration} duration={recordingDuration} activeColor={colors.tint} inactiveColor={colors.divider} />
+                   <Waveform position={recordingDuration} duration={recordingDuration} activeColor={colors.tint} inactiveColor={colors.divider} meteringData={meteringData} />
                  </View>
               </View>
             ) : (
