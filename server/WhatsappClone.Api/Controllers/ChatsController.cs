@@ -33,7 +33,7 @@ public class ChatsController : ControllerBase
                 c.IsGroup ? (c.GroupIconUrl ?? "") : c.Participants.First(p => p.UserId != userId).User.AvatarUrl ?? "",
                 c.Messages.OrderByDescending(m => m.Timestamp).Select(m => m.Content).FirstOrDefault() ?? "",
                 c.Messages.OrderByDescending(m => m.Timestamp).Select(m => m.Timestamp).FirstOrDefault(),
-                0 // TODO: Implement unread count
+                c.Messages.Count(m => !m.IsRead && m.SenderId != userId)
             ))
             .ToListAsync();
 
@@ -41,12 +41,17 @@ public class ChatsController : ControllerBase
     }
 
     [HttpGet("{chatId}/messages")]
-    public async Task<IActionResult> GetMessages(Guid chatId)
+    public async Task<IActionResult> GetMessages(Guid chatId, [FromQuery] int page = 0, [FromQuery] int pageSize = 50)
     {
         var userId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
 
-        var messages = await _context.Messages
+        var messagesQuery = _context.Messages
             .Where(m => m.ChatId == chatId)
+            .OrderByDescending(m => m.Timestamp)
+            .Skip(page * pageSize)
+            .Take(pageSize);
+
+        var messages = await messagesQuery
             .OrderBy(m => m.Timestamp)
             .Select(m => new MessageDto(
                 m.Id,
@@ -55,9 +60,9 @@ public class ChatsController : ControllerBase
                 m.Sender.Name ?? "User",
                 m.Timestamp,
                 m.SenderId == userId,
-                m.MediaUrl, // Mapping MediaUrl to Image for now in DTO
-                null, // Audio mapping
-                m.MediaUrl, // FileUri mapping
+                m.MediaUrl,
+                null,
+                m.MediaUrl,
                 m.FileName,
                 m.FileSize,
                 m.ReplyToId,

@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("WhatsappClone.Api")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+a827cd92b39c027b8a2c7f0faf4f3da38da15a87")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+929e981ec03bfd9f4cd450a997179aff52d462fe")]
 [assembly: System.Reflection.AssemblyProductAttribute("WhatsappClone.Api")]
 [assembly: System.Reflection.AssemblyTitleAttribute("WhatsappClone.Api")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

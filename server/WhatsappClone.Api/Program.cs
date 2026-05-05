@@ -10,7 +10,7 @@ using WhatsappClone.Api.Services.Interfaces;
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
-builder.Services.AddControllers();
+builder.Services.AddControllersWithViews();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
@@ -64,6 +64,8 @@ builder.Services.AddSignalR();
 // Services
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IEmailService, EmailService>();
+builder.Services.AddScoped<IUserService, UserService>();
+builder.Services.AddScoped<IStatusService, StatusService>();
 
 // CORS
 builder.Services.AddCors(options =>
@@ -97,6 +99,10 @@ using (var scope = app.Services.CreateScope())
 
 app.UseAuthentication();
 app.UseAuthorization();
+
+app.MapControllerRoute(
+    name: "default",
+    pattern: "{controller=AdminPanel}/{action=Dashboard}/{id?}");
 
 app.MapControllers();
 app.MapHub<ChatHub>("/chatHub");

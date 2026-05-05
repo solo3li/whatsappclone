@@ -1,6 +1,6 @@
 {
   "version": 2,
-  "dgSpecHash": "98qZKg6OFq4=",
+  "dgSpecHash": "rfabAfuvCPI=",
   "success": true,
   "projectFilePath": "C:\\Users\\solo\\Desktop\\whatsapp\\server\\WhatsappClone.Api\\WhatsappClone.Api.csproj",
   "expectedPackageFiles": [
@@ -9,7 +9,6 @@
     "C:\\Users\\solo\\.nuget\\packages\\mailkit\\4.16.0\\mailkit.4.16.0.nupkg.sha512",
     "C:\\Users\\solo\\.nuget\\packages\\microsoft.aspnetcore.authentication.jwtbearer\\10.0.7\\microsoft.aspnetcore.authentication.jwtbearer.10.0.7.nupkg.sha512",
     "C:\\Users\\solo\\.nuget\\packages\\microsoft.aspnetcore.openapi\\10.0.6\\microsoft.aspnetcore.openapi.10.0.6.nupkg.sha512",
-    "C:\\Users\\solo\\.nuget\\packages\\microsoft.aspnetcore.signalr.core\\1.2.9\\microsoft.aspnetcore.signalr.core.1.2.9.nupkg.sha512",
     "C:\\Users\\solo\\.nuget\\packages\\microsoft.build.framework\\18.0.2\\microsoft.build.framework.18.0.2.nupkg.sha512",
     "C:\\Users\\solo\\.nuget\\packages\\microsoft.codeanalysis.analyzers\\3.11.0\\microsoft.codeanalysis.analyzers.3.11.0.nupkg.sha512",
     "C:\\Users\\solo\\.nuget\\packages\\microsoft.codeanalysis.common\\5.0.0\\microsoft.codeanalysis.common.5.0.0.nupkg.sha512",
@@ -57,18 +56,5 @@
     "C:\\Users\\solo\\.nuget\\packages\\system.identitymodel.tokens.jwt\\8.18.0\\system.identitymodel.tokens.jwt.8.18.0.nupkg.sha512",
     "C:\\Users\\solo\\.nuget\\packages\\system.security.cryptography.pkcs\\10.0.0\\system.security.cryptography.pkcs.10.0.0.nupkg.sha512"
   ],
-  "logs": [
-    {
-      "code": "NU1510",
-      "level": "Warning",
-      "message": "PackageReference Microsoft.AspNetCore.SignalR.Core will not be pruned. Consider removing this package from your dependencies, as it is likely unnecessary.",
-      "projectPath": "C:\\Users\\solo\\Desktop\\whatsapp\\server\\WhatsappClone.Api\\WhatsappClone.Api.csproj",
-      "warningLevel": 1,
-      "filePath": "C:\\Users\\solo\\Desktop\\whatsapp\\server\\WhatsappClone.Api\\WhatsappClone.Api.csproj",
-      "libraryId": "Microsoft.AspNetCore.SignalR.Core",
-      "targetGraphs": [
-        "net10.0"
-      ]
-    }
-  ]
+  "logs": []
 }

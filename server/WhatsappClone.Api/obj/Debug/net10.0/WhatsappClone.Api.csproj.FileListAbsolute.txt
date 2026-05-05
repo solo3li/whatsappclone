@@ -161,3 +161,5 @@ C:\Users\solo\Desktop\whatsapp\server\WhatsappClone.Api\obj\Debug\net10.0\refint
 C:\Users\solo\Desktop\whatsapp\server\WhatsappClone.Api\obj\Debug\net10.0\WhatsappClone.Api.pdb
 C:\Users\solo\Desktop\whatsapp\server\WhatsappClone.Api\obj\Debug\net10.0\WhatsappClone.Api.genruntimeconfig.cache
 C:\Users\solo\Desktop\whatsapp\server\WhatsappClone.Api\obj\Debug\net10.0\ref\WhatsappClone.Api.dll
+C:\Users\solo\Desktop\whatsapp\server\WhatsappClone.Api\obj\Debug\net10.0\WhatsappClone.Api.RazorAssemblyInfo.cache
+C:\Users\solo\Desktop\whatsapp\server\WhatsappClone.Api\obj\Debug\net10.0\WhatsappClone.Api.RazorAssemblyInfo.cs

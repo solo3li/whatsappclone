@@ -1,0 +1,26 @@
+@model IEnumerable<Status>
+@{
+    ViewData["Title"] = "Active Statuses";
+}
+
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+    <h1 class="h2">Active Statuses</h1>
+</div>
+
+<div class="row">
+    @foreach (var status in Model)
+    {
+        <div class="col-md-3 mb-4">
+            <div class="card h-100">
+                <img src="@status.ImageUrl" class="card-img-top" alt="status" style="height: 200px; object-fit: cover;">
+                <div class="card-body">
+                    <h5 class="card-title">@status.User?.Name</h5>
+                    <p class="card-text">@status.Caption</p>
+                </div>
+                <div class="card-footer text-muted small">
+                    Posted: @status.CreatedAt.ToString("g")
+                </div>
+            </div>
+        </div>
+    }
+</div>
