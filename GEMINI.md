@@ -12,6 +12,7 @@ This directory contains the source code for a WhatsApp clone, primarily organize
 - **Framework**: React Native with Expo (Version ~54.0.33)
 - **Language**: TypeScript (`~5.9.2`)
 - **Routing**: Expo Router (`~6.0.23`)
+- **Media/File Pickers**: `expo-image-picker`, `expo-document-picker`
 - **UI & Animations**: `react-native-reanimated`, `react-native-gesture-handler`, `expo-symbols`, `expo-image`
 - **Linting**: ESLint (`^9.25.0`) with `eslint-config-expo`
 - **New Architecture**: The project has Expo's New Architecture enabled (`newArchEnabled: true`).
@@ -46,15 +47,20 @@ cd whats
   ```bash
   npm run lint
   ```
-- **Reset Project Template:**
-  If you want to start fresh and remove the default starter code (moving it to `app-example`), run:
-  ```bash
-  npm run reset-project
-  ```
 
-## Development Conventions
+## Development Conventions & Senior Expo Practices
 
 1.  **Routing**: The application uses Expo's file-based routing. All new screens and navigation layouts should be placed inside the `whats/app` directory.
 2.  **TypeScript**: The project relies heavily on TypeScript for type safety. Ensure all new components and utilities are properly typed. The app also has `typedRoutes` enabled, meaning route parameters and navigation functions are statically typed.
-3.  **Styling**: Use the provided constants in `whats/constants/Colors.ts` for consistent theming. 
-4.  **Backend Integration**: The `server` folder is currently empty. Any API development, database configurations, or backend logic should be initialized within that directory when the time comes.
+3.  **Data Strategy**:
+    - **Dummy Data Constraints:** Currently, the application heavily utilizes dummy data located in `@whats/data/dummy.ts`. **Critically: only use dummy dates (e.g., '12:00 PM', 'Yesterday') in chat records and message timestamps to maintain consistency across dummy payloads until a real backend strategy is implemented.**
+4.  **Hardware & Native Features**: We leverage modern Expo libraries to access native features rather than building custom bridges.
+    - Used `expo-image-picker` for robust camera interactions.
+    - Used `expo-document-picker` for comprehensive file handling.
+5.  **Multiagent & Advanced AI Skills Integration**:
+    - When extending features across the tech stack (e.g., bridging frontend with the `server/` directory), deploy multiagent workflows that combine specialized React Native UI synthesis with robust Node.js/Python server-side generation.
+    - Ensure AI tools generate idiomatically correct React Native primitives and strictly follow Expo SDK conventions instead of older Bare React Native workflows.
+
+## Backend Integration
+
+The `server` folder is currently empty. Any API development, database configurations, or backend logic should be initialized within that directory when the time comes.

@@ -1,6 +1,9 @@
-import { View, Text, StyleSheet, ImageBackground, FlatList, TextInput, KeyboardAvoidingView, Platform, useColorScheme, Image } from 'react-native';
+import { View, Text, StyleSheet, ImageBackground, FlatList, TextInput, KeyboardAvoidingView, Platform, useColorScheme, Image, TouchableOpacity } from 'react-native';
+import { useState } from 'react';
 import { useLocalSearchParams, Stack } from 'expo-router';
 import Animated, { FadeInUp, SlideInRight } from 'react-native-reanimated';
+import * as ImagePicker from 'expo-image-picker';
+import * as DocumentPicker from 'expo-document-picker';
 import { messages, chats } from '../../data/dummy';
 import Colors from '../../constants/Colors';
 import { Ionicons } from '@expo/vector-icons';
@@ -10,14 +13,76 @@ export default function ChatScreen() {
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
   
-  const chatMessages = messages[id as keyof typeof messages] || [];
   const chatInfo = chats.find(c => c.id === id);
+  const initialMessages = messages[id as keyof typeof messages] || [];
+
+  const [chatMessages, setChatMessages] = useState(initialMessages);
+  const [inputText, setInputText] = useState('');
+
+  const handleSend = () => {
+    if (!inputText.trim()) return;
+    const newMessage = {
+      id: Math.random().toString(),
+      text: inputText,
+      sender: 'Me',
+      time: '12:00 PM', // Using dummy date
+      isMe: true
+    };
+    setChatMessages(prev => [...prev, newMessage]);
+    setInputText('');
+  };
+
+  const handleCamera = async () => {
+    const permissionResult = await ImagePicker.requestCameraPermissionsAsync();
+    if (permissionResult.granted === false) {
+      alert("Camera permissions are required!");
+      return;
+    }
+    const result = await ImagePicker.launchCameraAsync({
+      mediaTypes: ['images'],
+      quality: 0.8,
+    });
+    if (!result.canceled) {
+      const newMessage = {
+        id: Math.random().toString(),
+        text: '',
+        image: result.assets[0].uri,
+        sender: 'Me',
+        time: '12:00 PM', // Using dummy date
+        isMe: true
+      };
+      setChatMessages(prev => [...prev, newMessage]);
+    }
+  };
+
+  const handleFilePick = async () => {
+    // Instead of general documents, let's open the image gallery for the attach button for better UX
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ['images'],
+      quality: 0.8,
+    });
+    if (!result.canceled) {
+      const newMessage = {
+        id: Math.random().toString(),
+        text: '',
+        image: result.assets[0].uri,
+        sender: 'Me',
+        time: '12:00 PM', // Using dummy date
+        isMe: true
+      };
+      setChatMessages(prev => [...prev, newMessage]);
+    }
+  };
+
+  const handleEmoji = () => {
+    setInputText(prev => prev + '😀');
+  };
 
   const renderMessage = ({ item, index }: { item: any, index: number }) => {
     const isMe = item.isMe;
     return (
       <Animated.View
-        entering={SlideInRight.delay(index * 100).duration(300)}
+        entering={SlideInRight.delay(index * 50).duration(300)}
         style={[
           styles.messageWrapper,
           isMe ? styles.messageWrapperMe : styles.messageWrapperOther
@@ -29,7 +94,13 @@ export default function ChatScreen() {
             ? { backgroundColor: colors.messageBackground, borderTopRightRadius: 0 } 
             : { backgroundColor: colors.messageIncoming, borderTopLeftRadius: 0 }
         ]}>
-          <Text style={[styles.messageText, { color: colors.text }]}>{item.text}</Text>
+          {item.image && (
+            <Image 
+              source={{ uri: item.image }} 
+              style={[styles.messageImage, { marginBottom: item.text ? 5 : 0 }]} 
+            />
+          )}
+          {item.text ? <Text style={[styles.messageText, { color: colors.text }]}>{item.text}</Text> : null}
           <Text style={[styles.messageTime, { color: colors.secondaryText }]}>{item.time}</Text>
         </View>
       </Animated.View>
@@ -73,19 +144,30 @@ export default function ChatScreen() {
           />
           <Animated.View entering={FadeInUp.duration(400)} style={styles.inputContainer}>
             <View style={[styles.inputInner, { backgroundColor: colors.background }]}>
-              <Ionicons name="happy-outline" size={24} color={colors.secondaryText} style={styles.icon} />
+              <TouchableOpacity onPress={handleEmoji}>
+                <Ionicons name="happy-outline" size={24} color={colors.secondaryText} style={styles.icon} />
+              </TouchableOpacity>
               <TextInput 
                 style={[styles.input, { color: colors.text }]} 
                 placeholder="Message" 
                 placeholderTextColor={colors.secondaryText}
                 multiline
+                value={inputText}
+                onChangeText={setInputText}
               />
-              <Ionicons name="attach" size={24} color={colors.secondaryText} style={styles.icon} />
-              <Ionicons name="camera-outline" size={24} color={colors.secondaryText} style={styles.icon} />
+              <TouchableOpacity onPress={handleFilePick}>
+                <Ionicons name="attach" size={24} color={colors.secondaryText} style={styles.icon} />
+              </TouchableOpacity>
+              <TouchableOpacity onPress={handleCamera}>
+                <Ionicons name="camera-outline" size={24} color={colors.secondaryText} style={styles.icon} />
+              </TouchableOpacity>
             </View>
-            <View style={[styles.micButton, { backgroundColor: colors.tint }]}>
-              <Ionicons name="mic" size={24} color="#fff" />
-            </View>
+            <TouchableOpacity 
+              style={[styles.micButton, { backgroundColor: colors.tint }]}
+              onPress={inputText.trim() ? handleSend : undefined}
+            >
+              <Ionicons name={inputText.trim() ? "send" : "mic"} size={24} color="#fff" />
+            </TouchableOpacity>
           </Animated.View>
         </KeyboardAvoidingView>
       </ImageBackground>
@@ -121,6 +203,12 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.1,
     shadowRadius: 1,
+  },
+  messageImage: {
+    width: 250,
+    height: 250,
+    borderRadius: 8,
+    resizeMode: 'cover',
   },
   messageText: {
     fontSize: 16,
