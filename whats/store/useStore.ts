@@ -3,7 +3,7 @@ import { chats as initialChats, messages as initialMessages } from '../data/dumm
 
 export interface User {
   id: string;
-  phone: string;
+  email: string;
   name: string;
   avatar: string;
   status: string;
@@ -44,7 +44,7 @@ interface AppState {
   contacts: User[]; // Simulated contacts
   
   // Auth Actions
-  login: (phone: string, name: string) => void;
+  login: (email: string, name: string) => void;
   logout: () => void;
   updateProfile: (updates: Partial<User>) => void;
 
@@ -77,14 +77,14 @@ export const useStore = create<AppState>((set, get) => ({
   messages: messagesRecord,
   blockedUsers: [],
   contacts: [
-    { id: '1', phone: '1234567890', name: 'Alice', avatar: 'https://i.pravatar.cc/150?img=1', status: 'Available' },
-    { id: '2', phone: '0987654321', name: 'Bob', avatar: 'https://i.pravatar.cc/150?img=2', status: 'Busy' },
-    { id: '3', phone: '1112223333', name: 'Charlie', avatar: 'https://i.pravatar.cc/150?img=3', status: 'At work' },
+    { id: '1', email: 'alice@example.com', name: 'Alice', avatar: 'https://i.pravatar.cc/150?img=1', status: 'Available' },
+    { id: '2', email: 'bob@example.com', name: 'Bob', avatar: 'https://i.pravatar.cc/150?img=2', status: 'Busy' },
+    { id: '3', email: 'charlie@example.com', name: 'Charlie', avatar: 'https://i.pravatar.cc/150?img=3', status: 'At work' },
     // More could be added, matching dummy.ts
   ],
 
-  login: (phone, name) => set({ 
-    currentUser: { id: 'me', phone, name, avatar: 'https://i.pravatar.cc/150?img=68', status: 'Hey there! I am using WhatsApp.' },
+  login: (email, name) => set({ 
+    currentUser: { id: 'me', email, name, avatar: 'https://i.pravatar.cc/150?img=68', status: 'Hey there! I am using WhatsApp.' },
     isAuthenticated: true 
   }),
 

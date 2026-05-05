@@ -68,14 +68,14 @@ export const calls = [
 ];
 
 export const updates = [
-  { id: '1', user: 'My status', avatar: 'https://i.pravatar.cc/150?img=11', time: 'Tap to add status update', isMe: true },
-  { id: '2', user: 'David', avatar: 'https://i.pravatar.cc/150?img=4', time: '45 minutes ago', isMe: false },
-  { id: '3', user: 'Emma', avatar: 'https://i.pravatar.cc/150?img=5', time: 'Today, 9:20 AM', isMe: false },
-  { id: '4', user: 'Frank', avatar: 'https://i.pravatar.cc/150?img=6', time: 'Today, 8:15 AM', isMe: false },
-  { id: '5', user: 'Grace', avatar: 'https://i.pravatar.cc/150?img=7', time: 'Yesterday, 11:30 PM', isMe: false },
-  { id: '6', user: 'Henry', avatar: 'https://i.pravatar.cc/150?img=8', time: 'Yesterday, 9:00 PM', isMe: false },
-  { id: '7', user: 'Isabella', avatar: 'https://i.pravatar.cc/150?img=9', time: 'Yesterday, 6:45 PM', isMe: false },
-  { id: '8', user: 'Jack', avatar: 'https://i.pravatar.cc/150?img=10', time: 'Yesterday, 5:20 PM', isMe: false },
-  { id: '9', user: 'Karen', avatar: 'https://i.pravatar.cc/150?img=11', time: 'Yesterday, 2:10 PM', isMe: false },
-  { id: '10', user: 'Liam', avatar: 'https://i.pravatar.cc/150?img=12', time: 'Yesterday, 10:05 AM', isMe: false },
+  { id: '1', user: 'My status', avatar: 'https://i.pravatar.cc/150?img=11', time: 'Tap to add status update', isMe: true, statusImage: 'https://images.unsplash.com/photo-1506744038136-46273834b3fb' },
+  { id: '2', user: 'David', avatar: 'https://i.pravatar.cc/150?img=4', time: '45 minutes ago', isMe: false, statusImage: 'https://images.unsplash.com/photo-1511764904403-9df276dbb900' },
+  { id: '3', user: 'Emma', avatar: 'https://i.pravatar.cc/150?img=5', time: 'Today, 9:20 AM', isMe: false, statusImage: 'https://images.unsplash.com/photo-1470071459604-3b5ec3a7fe05' },
+  { id: '4', user: 'Frank', avatar: 'https://i.pravatar.cc/150?img=6', time: 'Today, 8:15 AM', isMe: false, statusImage: 'https://images.unsplash.com/photo-1441974231531-c6227db76b6e' },
+  { id: '5', user: 'Grace', avatar: 'https://i.pravatar.cc/150?img=7', time: 'Yesterday, 11:30 PM', isMe: false, statusImage: 'https://images.unsplash.com/photo-1501785888041-af3ef285b470' },
+  { id: '6', user: 'Henry', avatar: 'https://i.pravatar.cc/150?img=8', time: 'Yesterday, 9:00 PM', isMe: false, statusImage: 'https://images.unsplash.com/photo-1447752875215-b2761acb3c5d' },
+  { id: '7', user: 'Isabella', avatar: 'https://i.pravatar.cc/150?img=9', time: 'Yesterday, 6:45 PM', isMe: false, statusImage: 'https://images.unsplash.com/photo-1433086566089-f70a661207bf' },
+  { id: '8', user: 'Jack', avatar: 'https://i.pravatar.cc/150?img=10', time: 'Yesterday, 5:20 PM', isMe: false, statusImage: 'https://images.unsplash.com/photo-1532270660266-d47260467d9d' },
+  { id: '9', user: 'Karen', avatar: 'https://i.pravatar.cc/150?img=11', time: 'Yesterday, 2:10 PM', isMe: false, statusImage: 'https://images.unsplash.com/photo-1502082553048-f009c37129b9' },
+  { id: '10', user: 'Liam', avatar: 'https://i.pravatar.cc/150?img=12', time: 'Yesterday, 10:05 AM', isMe: false, statusImage: 'https://images.unsplash.com/photo-1439853949127-fa647821eba0' },
 ];

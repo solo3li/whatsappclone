@@ -6,7 +6,7 @@ import { Stack } from 'expo-router';
 import { useStore } from '../../store/useStore';
 
 export default function VerifyScreen() {
-  const { phone } = useLocalSearchParams();
+  const { email } = useLocalSearchParams();
   const router = useRouter();
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
@@ -31,7 +31,7 @@ export default function VerifyScreen() {
 
   const handleFinish = () => {
     if (name.trim().length > 0) {
-      login(phone as string, name);
+      login(email as string, name);
       router.replace('/(tabs)');
     } else {
       alert("Please enter your name");
@@ -46,9 +46,9 @@ export default function VerifyScreen() {
         {step === 'otp' ? (
           <>
             <View style={styles.header}>
-              <Text style={[styles.title, { color: colors.text }]}>Verifying your number</Text>
+              <Text style={[styles.title, { color: colors.text }]}>Verifying your email</Text>
               <Text style={[styles.subtitle, { color: colors.secondaryText }]}>
-                Waiting to automatically detect an SMS sent to +1 {phone}.
+                A verification code has been sent to {email}.
               </Text>
             </View>
 

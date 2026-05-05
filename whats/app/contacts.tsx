@@ -16,7 +16,7 @@ export default function ContactsScreen() {
 
   const filteredContacts = contacts.filter(c => 
     c.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
-    c.phone.includes(searchQuery)
+    c.email.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   const handleContactPress = (userId: string) => {

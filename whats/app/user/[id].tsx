@@ -14,10 +14,12 @@ export default function UserProfileScreen() {
   const blockUser = useStore(state => state.blockUser);
   const unblockUser = useStore(state => state.unblockUser);
   const blockedUsers = useStore(state => state.blockedUsers);
+  const contacts = useStore(state => state.contacts);
   const chats = useStore(state => state.chats);
   
   // Find user details. In a real app this would come from a users table.
   const chatInfo = chats.find(c => c.id === id);
+  const contactInfo = contacts.find(c => c.id === id);
   const isBlocked = blockedUsers.includes(id as string);
 
   const handleBlockToggle = () => {
@@ -44,7 +46,7 @@ export default function UserProfileScreen() {
         <View style={styles.headerContainer}>
           <Image source={{ uri: chatInfo?.avatar }} style={styles.avatar} />
           <Text style={[styles.userName, { color: colors.text }]}>{chatInfo?.user || 'Unknown User'}</Text>
-          <Text style={[styles.phone, { color: colors.secondaryText }]}>+1 (555) 123-4567</Text>
+          <Text style={[styles.phone, { color: colors.secondaryText }]}>{contactInfo?.email || 'no-email@example.com'}</Text>
         </View>
 
         <View style={styles.actionRow}>
@@ -63,7 +65,7 @@ export default function UserProfileScreen() {
         </View>
 
         <View style={[styles.section, { backgroundColor: colorScheme === 'dark' ? '#1C1C1E' : '#F2F2F7' }]}>
-          <Text style={[styles.sectionTitle, { color: colors.text }]}>About and phone number</Text>
+          <Text style={[styles.sectionTitle, { color: colors.text }]}>About and email address</Text>
           <View style={styles.aboutRow}>
             <View>
               <Text style={[styles.aboutText, { color: colors.text }]}>Hey there! I am using WhatsApp.</Text>

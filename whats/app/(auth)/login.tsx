@@ -9,13 +9,13 @@ export default function LoginScreen() {
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
   
-  const [phoneNumber, setPhoneNumber] = useState('');
+  const [email, setEmail] = useState('');
 
   const handleNext = () => {
-    if (phoneNumber.length > 5) {
-      router.push({ pathname: '/(auth)/verify', params: { phone: phoneNumber } });
+    if (email.includes('@') && email.includes('.')) {
+      router.push({ pathname: '/(auth)/verify', params: { email } });
     } else {
-      alert("Please enter a valid phone number");
+      alert("Please enter a valid email address");
     }
   };
 
@@ -24,21 +24,21 @@ export default function LoginScreen() {
       <Stack.Screen options={{ headerShown: false }} />
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={[styles.container, { backgroundColor: colors.background }]}>
         <View style={styles.header}>
-          <Text style={[styles.title, { color: colors.text }]}>Enter your phone number</Text>
+          <Text style={[styles.title, { color: colors.text }]}>Enter your email address</Text>
           <Text style={[styles.subtitle, { color: colors.secondaryText }]}>
             WhatsApp will need to verify your account.
           </Text>
         </View>
 
         <View style={styles.inputContainer}>
-          <Text style={[styles.prefix, { color: colors.text }]}>+1</Text>
           <TextInput
             style={[styles.input, { color: colors.text, borderBottomColor: colors.tint }]}
-            placeholder="phone number"
+            placeholder="email@example.com"
             placeholderTextColor={colors.secondaryText}
-            keyboardType="phone-pad"
-            value={phoneNumber}
-            onChangeText={setPhoneNumber}
+            keyboardType="email-address"
+            autoCapitalize="none"
+            value={email}
+            onChangeText={setEmail}
             autoFocus
           />
         </View>
@@ -46,9 +46,9 @@ export default function LoginScreen() {
         <View style={{ flex: 1 }} />
 
         <TouchableOpacity 
-          style={[styles.button, { backgroundColor: colors.tint, opacity: phoneNumber.length > 5 ? 1 : 0.5 }]} 
+          style={[styles.button, { backgroundColor: colors.tint, opacity: email.length > 5 ? 1 : 0.5 }]} 
           onPress={handleNext}
-          disabled={phoneNumber.length <= 5}
+          disabled={email.length <= 5}
         >
           <Text style={styles.buttonText}>Next</Text>
         </TouchableOpacity>
