@@ -56,19 +56,29 @@ public class AdminPanelController : Controller
 
     public async Task<IActionResult> Messages(string searchTerm)
     {
-        var query = _context.Messages
-            .Include(m => m.Sender)
-            .Include(m => m.Chat)
-            .AsQueryable();
-
-        if (!string.IsNullOrEmpty(searchTerm))
+        try
         {
-            query = query.Where(m => m.Content.Contains(searchTerm) || m.Sender.Name.Contains(searchTerm));
-        }
+            var query = _context.Messages
+                .Include(m => m.Sender)
+                .Include(m => m.Chat)
+                .AsQueryable();
 
-        var messages = await query.OrderByDescending(m => m.Timestamp).Take(100).ToListAsync();
-        ViewBag.SearchTerm = searchTerm;
-        return View(messages);
+            if (!string.IsNullOrEmpty(searchTerm))
+            {
+                var lowerSearch = searchTerm.ToLower();
+                query = query.Where(m => 
+                    (m.Content != null && m.Content.ToLower().Contains(lowerSearch)) || 
+                    (m.Sender != null && m.Sender.Name != null && m.Sender.Name.ToLower().Contains(lowerSearch)));
+            }
+
+            var messages = await query.OrderByDescending(m => m.Timestamp).Take(100).ToListAsync();
+            ViewBag.SearchTerm = searchTerm;
+            return View(messages);
+        }
+        catch (Exception ex)
+        {
+            return Content($"Error loading messages: {ex.Message}");
+        }
     }
 
     public async Task<IActionResult> Statuses()

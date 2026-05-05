@@ -82,6 +82,9 @@ builder.Services.AddCors(options =>
 var app = builder.Build();
 
 // Configure the HTTP request pipeline.
+// Temporarily enable Developer Exception Page in Production to debug the 500 error
+app.UseDeveloperExceptionPage();
+
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
@@ -93,8 +96,16 @@ app.UseCors();
 // Ensure Database is created and migrated
 using (var scope = app.Services.CreateScope())
 {
-    var db = scope.ServiceProvider.GetRequiredService<WhatsappDbContext>();
-    db.Database.Migrate();
+    try 
+    {
+        var db = scope.ServiceProvider.GetRequiredService<WhatsappDbContext>();
+        db.Database.Migrate();
+        Console.WriteLine("Database migration successful.");
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine($"An error occurred while migrating the database: {ex.Message}");
+    }
 }
 
 app.UseAuthentication();
