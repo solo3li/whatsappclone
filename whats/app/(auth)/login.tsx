@@ -1,19 +1,30 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, StyleSheet, TouchableOpacity, KeyboardAvoidingView, Platform, useColorScheme } from 'react-native';
+import { View, Text, TextInput, StyleSheet, TouchableOpacity, KeyboardAvoidingView, Platform, useColorScheme, ActivityIndicator } from 'react-native';
 import { useRouter } from 'expo-router';
 import Colors from '../../constants/Colors';
 import { Stack } from 'expo-router';
+import { useStore } from '../../store/useStore';
 
 export default function LoginScreen() {
   const router = useRouter();
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
+  const requestOtp = useStore(state => state.requestOtp);
   
   const [email, setEmail] = useState('');
+  const [loading, setLoading] = useState(false);
 
-  const handleNext = () => {
+  const handleNext = async () => {
     if (email.includes('@') && email.includes('.')) {
-      router.push({ pathname: '/(auth)/verify', params: { email } });
+      setLoading(true);
+      try {
+        await requestOtp(email);
+        router.push({ pathname: '/(auth)/verify', params: { email } });
+      } catch (error) {
+        alert("Failed to send OTP. Please try again.");
+      } finally {
+        setLoading(false);
+      }
     } else {
       alert("Please enter a valid email address");
     }
@@ -46,11 +57,11 @@ export default function LoginScreen() {
         <View style={{ flex: 1 }} />
 
         <TouchableOpacity 
-          style={[styles.button, { backgroundColor: colors.tint, opacity: email.length > 5 ? 1 : 0.5 }]} 
+          style={[styles.button, { backgroundColor: colors.tint, opacity: email.length > 5 && !loading ? 1 : 0.5 }]} 
           onPress={handleNext}
-          disabled={email.length <= 5}
+          disabled={email.length <= 5 || loading}
         >
-          <Text style={styles.buttonText}>Next</Text>
+          {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.buttonText}>Next</Text>}
         </TouchableOpacity>
       </KeyboardAvoidingView>
     </>
@@ -83,13 +94,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     width: '80%',
   },
-  prefix: {
-    fontSize: 20,
-    marginRight: 10,
-    paddingBottom: 5,
-    borderBottomWidth: 2,
-    borderBottomColor: 'transparent',
-  },
   input: {
     flex: 1,
     fontSize: 20,
@@ -101,6 +105,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: 30,
     borderRadius: 24,
     marginBottom: 40,
+    minWidth: 120,
+    alignItems: 'center',
   },
   buttonText: {
     color: '#fff',

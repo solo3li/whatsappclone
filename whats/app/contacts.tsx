@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { View, Text, FlatList, StyleSheet, TouchableOpacity, Image, TextInput, useColorScheme } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, Text, FlatList, StyleSheet, TouchableOpacity, Image, TextInput, useColorScheme, ActivityIndicator } from 'react-native';
 import { useRouter, Stack } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useStore } from '../store/useStore';
@@ -11,17 +11,43 @@ export default function ContactsScreen() {
   const colors = Colors[colorScheme ?? 'light'];
   
   const contacts = useStore(state => state.contacts);
+  const searchUsers = useStore(state => state.searchUsers);
   const createChat = useStore(state => state.createChat);
+  
   const [searchQuery, setSearchQuery] = useState('');
+  const [loading, setLoading] = useState(false);
 
-  const filteredContacts = contacts.filter(c => 
-    c.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
-    c.email.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  useEffect(() => {
+    const delayDebounceFn = setTimeout(() => {
+      if (searchQuery.length > 2) {
+        handleSearch();
+      }
+    }, 500);
 
-  const handleContactPress = (userId: string) => {
-    createChat(userId);
-    router.replace(`/chat/${userId}`);
+    return () => clearTimeout(delayDebounceFn);
+  }, [searchQuery]);
+
+  const handleSearch = async () => {
+    setLoading(true);
+    try {
+      await searchUsers(searchQuery);
+    } catch (error) {
+      console.error(error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleContactPress = async (userId: string) => {
+    setLoading(true);
+    try {
+      const chatId = await createChat(userId);
+      router.replace(`/chat/${chatId}`);
+    } catch (error) {
+      alert("Failed to create chat");
+    } finally {
+      setLoading(false);
+    }
   };
 
   const renderItem = ({ item }: { item: any }) => (
@@ -57,10 +83,11 @@ export default function ContactsScreen() {
             value={searchQuery}
             onChangeText={setSearchQuery}
           />
+          {loading && <ActivityIndicator size="small" color={colors.tint} />}
         </View>
 
         <FlatList
-          data={filteredContacts}
+          data={contacts}
           keyExtractor={(item) => item.id}
           renderItem={renderItem}
           ListHeaderComponent={() => (
@@ -79,6 +106,11 @@ export default function ContactsScreen() {
               </TouchableOpacity>
             </View>
           )}
+          ListEmptyComponent={
+            <View style={{ alignItems: 'center', marginTop: 50 }}>
+              <Text style={{ color: colors.secondaryText }}>Search for users by name or email</Text>
+            </View>
+          }
         />
       </View>
     </>

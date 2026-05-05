@@ -31,6 +31,11 @@ export default function RootLayout() {
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
   const isAuthenticated = useStore((state) => state.isAuthenticated);
+  const loadStoredAuth = useStore((state) => state.loadStoredAuth);
+
+  useEffect(() => {
+    loadStoredAuth();
+  }, []);
 
   useProtectedRoute(isAuthenticated);
 

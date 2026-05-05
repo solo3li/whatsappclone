@@ -1,5 +1,8 @@
 import { create } from 'zustand';
-import { chats as initialChats, messages as initialMessages } from '../data/dummy';
+import axios from 'axios';
+import * as signalR from '@microsoft/signalr';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import Config from '../constants/Config';
 
 export interface User {
   id: string;
@@ -12,7 +15,8 @@ export interface User {
 export interface Message {
   id: string;
   text: string;
-  sender: string;
+  senderId: string;
+  senderName: string;
   time: string;
   isMe: boolean;
   image?: string;
@@ -22,8 +26,8 @@ export interface Message {
   fileUri?: string;
   fileName?: string;
   fileSize?: string;
-  replyTo?: string; // id of message being replied to
-  replyText?: string; // content/type of message being replied to
+  replyToId?: string;
+  replyText?: string;
   isForwarded?: boolean;
 }
 
@@ -38,190 +42,237 @@ export interface Chat {
 
 interface AppState {
   currentUser: User | null;
+  token: string | null;
   isAuthenticated: boolean;
   chats: Chat[];
   messages: Record<string, Message[]>;
   blockedUsers: string[];
-  contacts: User[]; // Simulated contacts
-  statusReactions: Record<string, { emoji: string, user: string }[]>;
+  contacts: User[];
+  connection: signalR.HubConnection | null;
   
   // Auth Actions
-  login: (email: string, name: string) => void;
-  logout: () => void;
-  updateProfile: (updates: Partial<User>) => void;
+  requestOtp: (email: string) => Promise<void>;
+  verifyOtp: (email: string, otp: string) => Promise<boolean>;
+  loadStoredAuth: () => Promise<void>;
+  logout: () => Promise<void>;
+  updateProfile: (name: string, avatar: string, status: string) => Promise<void>;
 
   // Chat Actions
-  createChat: (userId: string) => void;
-  deleteChat: (chatId: string) => void;
-
+  fetchChats: () => Promise<void>;
+  fetchMessages: (chatId: string) => Promise<void>;
+  createChat: (userId: string) => Promise<string>;
+  
   // Message Actions
-  addMessage: (chatId: string, message: Omit<Message, 'id' | 'isMe' | 'sender'>) => void;
-  editMessage: (chatId: string, messageId: string, newText: string) => void;
-  deleteMessage: (chatId: string, messageId: string) => void;
-  forwardMessage: (chatIds: string[], message: Message) => void;
-
-  // Block Actions
-  blockUser: (userId: string) => void;
-  unblockUser: (userId: string) => void;
-
-  // Status Actions
-  addStatusReaction: (statusId: string, emoji: string) => void;
+  sendMessage: (chatId: string, text: string, options?: any) => Promise<void>;
+  
+  // User Actions
+  searchUsers: (query: string) => Promise<void>;
+  
+  // SignalR
+  startSignalR: () => Promise<void>;
 }
 
-// Transform initial dummy messages to fit our Record type
-const messagesRecord: Record<string, Message[]> = {};
-Object.entries(initialMessages).forEach(([chatId, msgs]) => {
-  messagesRecord[chatId] = msgs as Message[];
-});
-
 export const useStore = create<AppState>((set, get) => ({
-  // Set a mock user for now, or keep null to force login flow later. We'll start null.
-  currentUser: null, 
+  currentUser: null,
+  token: null,
   isAuthenticated: false,
-  chats: initialChats,
-  messages: messagesRecord,
+  chats: [],
+  messages: {},
   blockedUsers: [],
-  statusReactions: {},
-  contacts: [
-    { id: '1', email: 'alice@example.com', name: 'Alice', avatar: 'https://i.pravatar.cc/150?img=1', status: 'Available' },
-    { id: '2', email: 'bob@example.com', name: 'Bob', avatar: 'https://i.pravatar.cc/150?img=2', status: 'Busy' },
-    { id: '3', email: 'charlie@example.com', name: 'Charlie', avatar: 'https://i.pravatar.cc/150?img=3', status: 'At work' },
-    // More could be added, matching dummy.ts
-  ],
+  contacts: [],
+  connection: null,
 
-  login: (email, name) => set({ 
-    currentUser: { id: 'me', email, name, avatar: 'https://i.pravatar.cc/150?img=68', status: 'Hey there! I am using WhatsApp.' },
-    isAuthenticated: true 
-  }),
+  requestOtp: async (email) => {
+    await axios.post(`${Config.API_URL}/Auth/request-otp`, { email });
+  },
 
-  logout: () => set({ currentUser: null, isAuthenticated: false }),
-
-  updateProfile: (updates) => set((state) => ({
-    currentUser: state.currentUser ? { ...state.currentUser, ...updates } : null
-  })),
-
-  createChat: (userId) => set((state) => {
-    // If chat exists, do nothing
-    if (state.chats.find(c => c.id === userId)) return state;
-    
-    const contact = state.contacts.find(c => c.id === userId) || { id: userId, name: 'Unknown', avatar: '' };
-    const newChat: Chat = {
-      id: userId,
-      user: contact.name,
-      avatar: contact.avatar,
-      lastMessage: '',
-      timestamp: '',
-      unread: 0
-    };
-    return { chats: [newChat, ...state.chats], messages: { ...state.messages, [userId]: [] } };
-  }),
-
-  deleteChat: (chatId) => set((state) => {
-    const newMessages = { ...state.messages };
-    delete newMessages[chatId];
-    return {
-      chats: state.chats.filter(c => c.id !== chatId),
-      messages: newMessages
-    };
-  }),
-
-  addMessage: (chatId, message) => set((state) => {
-    if (state.blockedUsers.includes(chatId)) return state; // Can't message blocked users
-    
-    const newMessage: Message = {
-      ...message,
-      id: Math.random().toString(),
-      isMe: true,
-      sender: state.currentUser?.name || 'Me',
-    };
-
-    const currentChatMsgs = state.messages[chatId] || [];
-    const updatedChats = state.chats.map(chat => {
-      if (chat.id === chatId) {
-        return { ...chat, lastMessage: message.text || '📷 Media', timestamp: message.time };
-      }
-      return chat;
-    });
-
-    return {
-      messages: { ...state.messages, [chatId]: [...currentChatMsgs, newMessage] },
-      chats: updatedChats
-    };
-  }),
-
-  editMessage: (chatId, messageId, newText) => set((state) => {
-    const chatMsgs = state.messages[chatId];
-    if (!chatMsgs) return state;
-
-    const newMsgs = chatMsgs.map(m => m.id === messageId && m.isMe ? { ...m, text: newText } : m);
-    
-    // Update last message preview if it was the last one
-    let updatedChats = state.chats;
-    if (newMsgs.length > 0 && newMsgs[newMsgs.length - 1].id === messageId) {
-      updatedChats = state.chats.map(c => c.id === chatId ? { ...c, lastMessage: newText } : c);
-    }
-
-    return { messages: { ...state.messages, [chatId]: newMsgs }, chats: updatedChats };
-  }),
-
-  deleteMessage: (chatId, messageId) => set((state) => {
-    const chatMsgs = state.messages[chatId];
-    if (!chatMsgs) return state;
-
-    const newMsgs = chatMsgs.filter(m => !(m.id === messageId && m.isMe));
-    
-    let updatedChats = state.chats;
-    if (newMsgs.length > 0) {
-      updatedChats = state.chats.map(c => c.id === chatId ? { ...c, lastMessage: newMsgs[newMsgs.length - 1].text || '📷 Media' } : c);
-    } else {
-       updatedChats = state.chats.map(c => c.id === chatId ? { ...c, lastMessage: '' } : c);
-    }
-
-    return { messages: { ...state.messages, [chatId]: newMsgs }, chats: updatedChats };
-  }),
-
-  forwardMessage: (chatIds, message) => set((state) => {
-    let newMessages = { ...state.messages };
-    let updatedChats = [...state.chats];
-
-    chatIds.forEach(chatId => {
-      const fwdMsg: Message = {
-        ...message,
-        id: Math.random().toString(),
-        isMe: true,
-        sender: state.currentUser?.name || 'Me',
-        isForwarded: true,
-        time: '12:00 PM' // Using dummy date for now
-      };
+  verifyOtp: async (email, otp) => {
+    try {
+      const response = await axios.post(`${Config.API_URL}/Auth/verify-otp`, { email, otp });
+      const { token, user } = response.data;
       
-      const currentMsgs = newMessages[chatId] || [];
-      newMessages[chatId] = [...currentMsgs, fwdMsg];
+      const userData: User = {
+        id: user.id,
+        email: user.email,
+        name: user.name || '',
+        avatar: user.avatarUrl || '',
+        status: user.status || ''
+      };
 
-      updatedChats = updatedChats.map(c => c.id === chatId ? { ...c, lastMessage: fwdMsg.text || 'Forwarded message', timestamp: fwdMsg.time } : c);
+      await AsyncStorage.setItem('token', token);
+      await AsyncStorage.setItem('user', JSON.stringify(userData));
+
+      set({ token, currentUser: userData, isAuthenticated: true });
+      await get().startSignalR();
+      await get().fetchChats();
+      return true;
+    } catch (error) {
+      console.error('Verification failed', error);
+      return false;
+    }
+  },
+
+  loadStoredAuth: async () => {
+    const token = await AsyncStorage.getItem('token');
+    const userStr = await AsyncStorage.getItem('user');
+    if (token && userStr) {
+      const user = JSON.parse(userStr);
+      set({ token, currentUser: user, isAuthenticated: true });
+      get().startSignalR();
+      get().fetchChats();
+    }
+  },
+
+  logout: async () => {
+    const { connection } = get();
+    if (connection) await connection.stop();
+    await AsyncStorage.removeItem('token');
+    await AsyncStorage.removeItem('user');
+    set({ token: null, currentUser: null, isAuthenticated: false, connection: null });
+  },
+
+  fetchChats: async () => {
+    const { token } = get();
+    if (!token) return;
+    const response = await axios.get(`${Config.API_URL}/Chats`, {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+    const chats: Chat[] = response.data.map((c: any) => ({
+      id: c.id,
+      user: c.name,
+      avatar: c.iconUrl,
+      lastMessage: c.lastMessage,
+      timestamp: c.lastMessageTimestamp ? new Date(c.lastMessageTimestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '',
+      unread: c.unreadCount
+    }));
+    set({ chats });
+  },
+
+  fetchMessages: async (chatId) => {
+    const { token } = get();
+    if (!token) return;
+    const response = await axios.get(`${Config.API_URL}/Chats/${chatId}/messages`, {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+    const messages: Message[] = response.data.map((m: any) => ({
+      id: m.id,
+      text: m.content,
+      senderId: m.senderId,
+      senderName: m.senderName,
+      time: new Date(m.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      isMe: m.isMe,
+      image: m.imageUrl,
+      audio: m.audioUrl,
+      fileUri: m.fileUri,
+      fileName: m.fileName,
+      fileSize: m.fileSize,
+      replyToId: m.replyToId,
+      replyText: m.replyToContent
+    }));
+    set((state) => ({
+      messages: { ...state.messages, [chatId]: messages }
+    }));
+  },
+
+  createChat: async (userId) => {
+    const { token } = get();
+    const response = await axios.post(`${Config.API_URL}/Chats`, { userId }, {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+    await get().fetchChats();
+    return response.data; // chatId
+  },
+
+  sendMessage: async (chatId, content, type = 0) => {
+    const { connection } = get();
+    if (connection && connection.state === signalR.HubConnectionState.Connected) {
+      await connection.invoke('SendMessage', chatId, content, type);
+    }
+  },
+
+  searchUsers: async (query) => {
+    const { token } = get();
+    const response = await axios.get(`${Config.API_URL}/User/search?query=${query}`, {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+    const contacts: User[] = response.data.map((u: any) => ({
+      id: u.id,
+      email: u.email,
+      name: u.name || '',
+      avatar: u.avatarUrl || '',
+      status: u.status || ''
+    }));
+    set({ contacts });
+  },
+
+  startSignalR: async () => {
+    const { token, connection: existingConn } = get();
+    if (!token || existingConn) return;
+
+    const connection = new signalR.HubConnectionBuilder()
+      .withUrl(Config.HUB_URL, {
+        accessTokenFactory: () => token
+      })
+      .withAutomaticReconnect()
+      .build();
+
+    connection.on('ReceiveMessage', (m: any) => {
+      const newMessage: Message = {
+        id: m.id,
+        text: m.content,
+        senderId: m.senderId,
+        senderName: m.senderName,
+        time: new Date(m.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        isMe: m.senderId === get().currentUser?.id,
+        image: m.imageUrl,
+        audio: m.audioUrl,
+        fileUri: m.fileUri,
+        fileName: m.fileName,
+        fileSize: m.fileSize,
+        replyToId: m.replyToId,
+        replyText: m.replyToContent
+      };
+
+      set((state) => {
+        const chatMsgs = state.messages[m.chatId] || [];
+        return {
+          messages: { ...state.messages, [m.chatId]: [...chatMsgs, newMessage] }
+        };
+      });
+
+      // Update last message in chat list
+      set((state) => ({
+        chats: state.chats.map(c => c.id === m.chatId ? { 
+          ...c, 
+          lastMessage: m.content, 
+          timestamp: newMessage.time,
+          unread: newMessage.isMe ? c.unread : c.unread + 1
+        } : c)
+      }));
     });
 
-    return { messages: newMessages, chats: updatedChats };
-  }),
+    connection.on('UserStatusChanged', (userId: string, isOnline: boolean, lastSeen?: string) => {
+      // Handle presence updates
+    });
 
-  blockUser: (userId) => set((state) => {
-    if (!state.blockedUsers.includes(userId)) {
-      return { blockedUsers: [...state.blockedUsers, userId] };
+    try {
+      await connection.start();
+      set({ connection });
+      console.log('SignalR Connected');
+    } catch (err) {
+      console.error('SignalR Connection Error', err);
     }
-    return state;
-  }),
+  },
 
-  unblockUser: (userId) => set((state) => ({
-    blockedUsers: state.blockedUsers.filter(id => id !== userId)
-  })),
-
-  addStatusReaction: (statusId, emoji) => set((state) => {
-    const reactions = state.statusReactions[statusId] || [];
-    return {
-      statusReactions: {
-        ...state.statusReactions,
-        [statusId]: [...reactions, { emoji, user: state.currentUser?.name || 'Me' }]
-      }
-    };
-  }),
-
+  updateProfile: async (name, avatar, status) => {
+    const { token, currentUser } = get();
+    await axios.put(`${Config.API_URL}/User/profile`, { name, avatarUrl: avatar, status }, {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+    if (currentUser) {
+      const updatedUser = { ...currentUser, name, avatar, status };
+      await AsyncStorage.setItem('user', JSON.stringify(updatedUser));
+      set({ currentUser: updatedUser });
+    }
+  }
 }));

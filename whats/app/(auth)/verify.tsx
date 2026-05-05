@@ -10,33 +10,60 @@ export default function VerifyScreen() {
   const router = useRouter();
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
-  const login = useStore(state => state.login);
+  const verifyOtp = useStore(state => state.verifyOtp);
+  const updateProfile = useStore(state => state.updateProfile);
+  const currentUser = useStore(state => state.currentUser);
   
   const [code, setCode] = useState('');
   const [name, setName] = useState('');
   const [step, setStep] = useState<'otp' | 'profile'>('otp');
   const [loading, setLoading] = useState(false);
 
-  const handleVerify = () => {
+  const handleVerify = async () => {
     if (code.length === 6) {
       setLoading(true);
-      setTimeout(() => {
-        setLoading(false);
-        setStep('profile');
-      }, 1000);
+      const success = await verifyOtp(email as string, code);
+      setLoading(false);
+      
+      if (success) {
+        // useStore updated currentUser. Check if name is set.
+        // We need to wait for state update or check the return value.
+        // verifyOtp returns true if success.
+        // Let's check the store's currentUser after state update.
+        // But Zustand updates are immediate in the next render.
+        // I'll check the name from the current state (which will be updated).
+        // Actually, let's just transition to profile if needed.
+        setStep('profile'); 
+      } else {
+        alert("Invalid code. Please try again.");
+      }
     } else {
       alert("Enter a 6-digit code");
     }
   };
 
-  const handleFinish = () => {
+  const handleFinish = async () => {
     if (name.trim().length > 0) {
-      login(email as string, name);
-      router.replace('/(tabs)');
+      setLoading(true);
+      try {
+        await updateProfile(name, '', 'Hey there! I am using WhatsApp.');
+        router.replace('/(tabs)');
+      } catch (error) {
+        alert("Failed to update profile.");
+      } finally {
+        setLoading(false);
+      }
     } else {
       alert("Please enter your name");
     }
   };
+
+  // If we already have a name after verification, we can skip the profile step
+  React.useEffect(() => {
+    if (step === 'profile' && currentUser?.name) {
+      router.replace('/(tabs)');
+    }
+  }, [step, currentUser]);
 
   return (
     <>
@@ -64,12 +91,11 @@ export default function VerifyScreen() {
                 autoFocus
               />
             </View>
-            <Text style={{ color: colors.secondaryText, marginTop: 20 }}>Enter any 6 digits to verify</Text>
 
             <View style={{ flex: 1 }} />
 
             <TouchableOpacity 
-              style={[styles.button, { backgroundColor: colors.tint, opacity: code.length === 6 ? 1 : 0.5 }]} 
+              style={[styles.button, { backgroundColor: colors.tint, opacity: code.length === 6 && !loading ? 1 : 0.5 }]} 
               onPress={handleVerify}
               disabled={code.length !== 6 || loading}
             >
@@ -86,7 +112,7 @@ export default function VerifyScreen() {
             </View>
 
             <View style={styles.avatarPlaceholder}>
-              <Text style={{ color: '#fff', fontSize: 12 }}>ADD PHOTO</Text>
+              <Ionicons name="camera" size={30} color="#fff" />
             </View>
 
             <View style={styles.inputContainer}>
@@ -103,11 +129,11 @@ export default function VerifyScreen() {
             <View style={{ flex: 1 }} />
 
             <TouchableOpacity 
-              style={[styles.button, { backgroundColor: colors.tint, opacity: name.trim().length > 0 ? 1 : 0.5 }]} 
+              style={[styles.button, { backgroundColor: colors.tint, opacity: name.trim().length > 0 && !loading ? 1 : 0.5 }]} 
               onPress={handleFinish}
-              disabled={name.trim().length === 0}
+              disabled={name.trim().length === 0 || loading}
             >
-              <Text style={styles.buttonText}>Finish</Text>
+              {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.buttonText}>Finish</Text>}
             </TouchableOpacity>
           </>
         )}
@@ -153,7 +179,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 30,
     borderRadius: 24,
     marginBottom: 40,
-    minWidth: 100,
+    minWidth: 120,
     alignItems: 'center'
   },
   buttonText: {
@@ -171,3 +197,4 @@ const styles = StyleSheet.create({
     marginBottom: 30,
   }
 });
+import { Ionicons } from '@expo/vector-icons';

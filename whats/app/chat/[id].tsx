@@ -163,6 +163,12 @@ export default function ChatScreen() {
 
   const chatInfo = chats.find(c => c.id === id);
   const chatMessages = allMessages[id as string] || [];
+  const fetchMessages = useStore(state => state.fetchMessages);
+  const sendMessage = useStore(state => state.sendMessage);
+
+  useEffect(() => {
+    if (id) fetchMessages(id as string);
+  }, [id]);
 
   const [inputText, setInputText] = useState('');
   const [isEmojiPickerOpen, setIsEmojiPickerOpen] = useState(false);
@@ -315,13 +321,7 @@ export default function ChatScreen() {
 
   const sendAudio = () => {
     if (previewUri) {
-      addMessage(id as string, {
-        text: '',
-        audio: previewUri,
-        duration: recordingDuration,
-        metering: meteringData,
-        time: '12:00 PM', // Using dummy date
-      });
+      sendMessage(id as string, previewUri, 2); // 2 = Audio
       cancelPreview();
     }
   };
@@ -386,11 +386,7 @@ export default function ChatScreen() {
       quality: 0.8,
     });
     if (!result.canceled) {
-      addMessage(id as string, {
-        text: '',
-        image: result.assets[0].uri,
-        time: '12:00 PM', // Using dummy date
-      });
+      sendMessage(id as string, result.assets[0].uri, 1); // 1 = Image
     }
   };
 
@@ -405,11 +401,7 @@ export default function ChatScreen() {
       quality: 0.8,
     });
     if (!result.canceled) {
-      addMessage(id as string, {
-        text: '',
-        image: result.assets[0].uri,
-        time: '12:00 PM', // Using dummy date
-      });
+      sendMessage(id as string, result.assets[0].uri, 1); // 1 = Image
     }
   };
 
@@ -442,12 +434,7 @@ export default function ChatScreen() {
       editMessage(id as string, editingMsgId, inputText);
       setEditingMsgId(null);
     } else {
-      addMessage(id as string, {
-        text: inputText,
-        time: '12:00 PM', // Using dummy date
-        replyTo: replyingTo?.id,
-        replyText: replyingTo?.text || (replyingTo?.image ? '📷 Photo' : replyingTo?.audio ? '🎤 Audio' : replyingTo?.fileUri ? '📄 Document' : undefined)
-      });
+      sendMessage(id as string, inputText, 0); // 0 = Text
     }
     setInputText('');
     setReplyingTo(null);
