@@ -42,6 +42,32 @@ const FileMessage = ({ name, uri, size, colors }: { name: string, uri: string, s
   );
 };
 
+const Waveform = ({ position, duration, activeColor, inactiveColor }: { position: number, duration: number, activeColor: string, inactiveColor: string }) => {
+  // Generate a random stable waveform for visual effect. 
+  // In a real app with Expo AV, we'd extract metering data. For now, a simulated wave looks great.
+  const [bars] = useState(() => Array.from({ length: 40 }, () => Math.random() * 20 + 5));
+  const progress = duration > 0 ? position / duration : 0;
+
+  return (
+    <View style={{ flexDirection: 'row', alignItems: 'center', height: 30, flex: 1, marginHorizontal: 10, gap: 2 }}>
+      {bars.map((height, index) => {
+        const isActive = index / bars.length <= progress;
+        return (
+          <View 
+            key={index} 
+            style={{ 
+              width: 3, 
+              height: height, 
+              backgroundColor: isActive ? activeColor : inactiveColor, 
+              borderRadius: 2 
+            }} 
+          />
+        );
+      })}
+    </View>
+  );
+};
+
 const AudioMessage = ({ uri, duration, colors }: { uri: string, duration: number, colors: any }) => {
   const [sound, setSound] = useState<Audio.Sound | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
@@ -90,14 +116,14 @@ const AudioMessage = ({ uri, duration, colors }: { uri: string, duration: number
   }, [sound]);
 
   return (
-    <View style={{ flexDirection: 'row', alignItems: 'center', width: 220, paddingVertical: 5, paddingHorizontal: 2 }}>
+    <View style={{ flexDirection: 'row', alignItems: 'center', width: 250, paddingVertical: 5, paddingHorizontal: 2 }}>
       <TouchableOpacity onPress={togglePlay}>
-        <Ionicons name={isPlaying ? "pause" : "play"} size={26} color={colors.secondaryText} />
+        <Ionicons name={isPlaying ? "pause" : "play"} size={32} color={colors.secondaryText} />
       </TouchableOpacity>
-      <View style={{ flex: 1, marginHorizontal: 10, height: 3, backgroundColor: colors.divider, borderRadius: 2 }}>
-        <View style={{ width: `${duration ? (position / duration) * 100 : 0}%`, height: '100%', backgroundColor: colors.tint, borderRadius: 2 }} />
-      </View>
-      <View style={{ width: 40 }}>
+      
+      <Waveform position={position} duration={duration} activeColor={colors.tint} inactiveColor={colors.divider} />
+      
+      <View style={{ width: 40, alignItems: 'flex-end' }}>
         <Text style={{ fontSize: 11, color: colors.secondaryText }}>{formatTime(position > 0 ? position : (duration || 0))}</Text>
       </View>
     </View>
@@ -380,25 +406,21 @@ export default function ChatScreen() {
           />
           <Animated.View entering={FadeInUp.duration(400)} style={styles.inputContainer}>
             {previewUri ? (
-              <View style={[styles.inputInner, { backgroundColor: colors.background, justifyContent: 'space-between', paddingHorizontal: 15 }]}>
-                <TouchableOpacity onPress={cancelPreview} style={{ padding: 5 }}>
+              <View style={[styles.inputInner, { backgroundColor: colors.background, justifyContent: 'space-between', paddingHorizontal: 5 }]}>
+                <TouchableOpacity onPress={cancelPreview} style={{ padding: 10 }}>
                   <Ionicons name="trash-outline" size={24} color="#FF3B30" />
                 </TouchableOpacity>
-                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                  <TouchableOpacity onPress={playPreview} style={{ marginRight: 15 }}>
-                    <Ionicons name={isPlayingPreview ? "pause-circle" : "play-circle"} size={32} color={colors.secondaryText} />
-                  </TouchableOpacity>
-                  <Text style={{ color: colors.text, fontSize: 16 }}>{formatTime(recordingDuration)}</Text>
-                </View>
+                <TouchableOpacity onPress={playPreview} style={{ marginLeft: 5 }}>
+                  <Ionicons name={isPlayingPreview ? "pause-circle" : "play-circle"} size={32} color={colors.secondaryText} />
+                </TouchableOpacity>
+                <Waveform position={0} duration={recordingDuration} activeColor={colors.tint} inactiveColor={colors.divider} />
               </View>
             ) : isRecording ? (
               <View style={[styles.inputInner, { backgroundColor: colors.background, paddingHorizontal: 15 }]}>
                  <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
                    <Animated.View style={[pulseStyle, { width: 12, height: 12, borderRadius: 6, backgroundColor: '#FF3B30', marginRight: 10 }]} />
                    <Text style={{ color: colors.text, fontSize: 16, width: 60 }}>{formatTime(recordingDuration)}</Text>
-                   <View style={{ flex: 1, alignItems: 'flex-end', paddingRight: 10 }}>
-                     <Text style={{ color: colors.secondaryText, fontSize: 14 }}>Tap stop to preview</Text>
-                   </View>
+                   <Waveform position={recordingDuration} duration={recordingDuration} activeColor={colors.tint} inactiveColor={colors.divider} />
                  </View>
               </View>
             ) : (
