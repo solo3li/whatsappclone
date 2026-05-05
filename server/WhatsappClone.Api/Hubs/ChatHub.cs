@@ -56,16 +56,23 @@ public class ChatHub : Hub
         await base.OnDisconnectedAsync(exception);
     }
 
-    public async Task SendMessage(Guid chatId, string content, MessageType type = MessageType.Text)
+    public async Task SendMessage(Guid chatId, string content, MessageType type = MessageType.Text, string? mediaUrl = null, string? fileName = null, string? fileSize = null)
     {
-        var senderId = Guid.Parse(Context.UserIdentifier!);
+        var senderIdString = Context.UserIdentifier;
+        if (string.IsNullOrEmpty(senderIdString)) return;
+        
+        var senderId = Guid.Parse(senderIdString);
+        var senderName = Context.User?.Identity?.Name ?? "User";
         
         var message = new Message
         {
             ChatId = chatId,
             SenderId = senderId,
-            Content = content,
+            Content = type == MessageType.Text ? content : null,
             MessageType = type,
+            MediaUrl = type != MessageType.Text ? content : null, // For simplicity, using content param as URL for media types
+            FileName = fileName,
+            FileSize = fileSize,
             Timestamp = DateTime.UtcNow
         };
 
@@ -77,15 +84,21 @@ public class ChatHub : Hub
             .Select(cp => cp.UserId.ToString())
             .ToListAsync();
 
+        // Broadcast with consistent property names (matching MessageDto)
         await Clients.Users(participants).SendAsync("ReceiveMessage", new
         {
-            message.Id,
-            message.ChatId,
-            message.SenderId,
-            message.Content,
-            message.MessageType,
-            message.Timestamp,
-            SenderName = Context.User?.Identity?.Name
+            id = message.Id,
+            chatId = message.ChatId,
+            text = message.Content ?? "",
+            senderId = message.SenderId,
+            senderName = senderName,
+            time = message.Timestamp,
+            isMe = false, // Will be determined by client
+            image = message.MessageType == MessageType.Image ? message.MediaUrl : null,
+            audio = message.MessageType == MessageType.Audio ? message.MediaUrl : null,
+            fileUri = message.MessageType == MessageType.File ? message.MediaUrl : null,
+            fileName = message.FileName,
+            fileSize = message.FileSize
         });
     }
 

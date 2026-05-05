@@ -90,7 +90,7 @@ interface AppState {
   createChat: (userId: string) => Promise<string>;
   
   // Message Actions
-  sendMessage: (chatId: string, text: string, options?: any) => Promise<void>;
+  sendMessage: (chatId: string, text: string, type?: number, options?: any) => Promise<void>;
   addMessage: (chatId: string, message: any) => void;
   deleteMessage: (chatId: string, messageId: string) => void;
   editMessage: (chatId: string, messageId: string, newText: string) => void;
@@ -204,9 +204,9 @@ export const useStore = create<AppState>((set, get) => ({
       const chats: Chat[] = response.data.map((c: any) => ({
         id: c.id,
         user: c.name,
-        avatar: c.iconUrl,
+        avatar: c.avatar,
         lastMessage: c.lastMessage,
-        timestamp: c.lastMessageTimestamp ? new Date(c.lastMessageTimestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '',
+        timestamp: c.lastMessageTime ? new Date(c.lastMessageTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '',
         unread: c.unreadCount
       }));
       set({ chats });
@@ -224,18 +224,18 @@ export const useStore = create<AppState>((set, get) => ({
       });
       const messages: Message[] = response.data.map((m: any) => ({
         id: m.id,
-        text: m.content,
+        text: m.text || '',
         senderId: m.senderId,
         senderName: m.senderName,
-        time: new Date(m.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        time: new Date(m.time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
         isMe: m.isMe,
-        image: m.imageUrl,
-        audio: m.audioUrl,
+        image: m.image,
+        audio: m.audio,
         fileUri: m.fileUri,
         fileName: m.fileName,
         fileSize: m.fileSize,
         replyToId: m.replyToId,
-        replyText: m.replyToContent
+        replyText: m.replyText
       }));
       set((state) => ({
         messages: { ...state.messages, [chatId]: messages }
@@ -259,11 +259,11 @@ export const useStore = create<AppState>((set, get) => ({
     }
   },
 
-  sendMessage: async (chatId, content, type = 0) => {
+  sendMessage: async (chatId, content, type = 0, options?: any) => {
     try {
       const { connection } = get();
       if (connection && connection.state === signalR.HubConnectionState.Connected) {
-        await connection.invoke('SendMessage', chatId, content, type);
+        await connection.invoke('SendMessage', chatId, content, type, options?.mediaUrl, options?.fileName, options?.fileSize);
       }
     } catch (error) {
       console.error('Send message failed', error);
@@ -430,22 +430,25 @@ export const useStore = create<AppState>((set, get) => ({
     connection.on('ReceiveMessage', (m: any) => {
       const newMessage: Message = {
         id: m.id,
-        text: m.content,
+        text: m.text || '',
         senderId: m.senderId,
         senderName: m.senderName,
-        time: new Date(m.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        time: new Date(m.time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
         isMe: m.senderId === get().currentUser?.id,
-        image: m.imageUrl,
-        audio: m.audioUrl,
+        image: m.image,
+        audio: m.audio,
         fileUri: m.fileUri,
         fileName: m.fileName,
         fileSize: m.fileSize,
         replyToId: m.replyToId,
-        replyText: m.replyToContent
+        replyText: m.replyText
       };
 
       set((state) => {
         const chatMsgs = state.messages[m.chatId] || [];
+        // Prevent duplicates
+        if (chatMsgs.some(existing => existing.id === newMessage.id)) return state;
+        
         return {
           messages: { ...state.messages, [m.chatId]: [...chatMsgs, newMessage] }
         };
@@ -455,7 +458,7 @@ export const useStore = create<AppState>((set, get) => ({
       set((state) => ({
         chats: state.chats.map(c => c.id === m.chatId ? { 
           ...c, 
-          lastMessage: m.content, 
+          lastMessage: newMessage.text || (newMessage.image ? '📷 Photo' : newMessage.audio ? '🎤 Audio' : '📄 Document'), 
           timestamp: newMessage.time,
           unread: newMessage.isMe ? c.unread : c.unread + 1
         } : c)
