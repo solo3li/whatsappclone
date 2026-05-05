@@ -155,10 +155,13 @@ export default function ChatScreen() {
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
   
-  const chatInfo = chats.find(c => c.id === id);
-  const initialMessages = messages[id as keyof typeof messages] || [];
+  const chats = useStore(state => state.chats);
+  const allMessages = useStore(state => state.messages);
+  const addMessage = useStore(state => state.addMessage);
 
-  const [chatMessages, setChatMessages] = useState(initialMessages);
+  const chatInfo = chats.find(c => c.id === id);
+  const chatMessages = allMessages[id as string] || [];
+
   const [inputText, setInputText] = useState('');
   const [isEmojiPickerOpen, setIsEmojiPickerOpen] = useState(false);
 
@@ -381,6 +384,48 @@ export default function ChatScreen() {
     } else {
       alert("Can only edit text messages");
     }
+  };
+
+  const handleCamera = async () => {
+    const permissionResult = await ImagePicker.requestCameraPermissionsAsync();
+    if (permissionResult.granted === false) {
+      alert("Camera permissions are required!");
+      return;
+    }
+    const result = await ImagePicker.launchCameraAsync({
+      mediaTypes: ['images'],
+      quality: 0.8,
+    });
+    if (!result.canceled) {
+      addMessage(id as string, {
+        text: '',
+        image: result.assets[0].uri,
+        time: '12:00 PM', // Using dummy date
+      });
+    }
+  };
+
+  const handleFilePick = async () => {
+    try {
+      const result = await DocumentPicker.getDocumentAsync({});
+      if (!result.canceled && result.assets && result.assets.length > 0) {
+        const asset = result.assets[0];
+        const sizeStr = asset.size ? (asset.size / 1024 / 1024).toFixed(2) + ' MB' : 'Unknown size';
+        addMessage(id as string, {
+          text: '',
+          fileName: asset.name,
+          fileUri: asset.uri,
+          fileSize: sizeStr,
+          time: '12:00 PM', // Using dummy date
+        });
+      }
+    } catch (error) {
+      console.error('Error picking document', error);
+    }
+  };
+
+  const handleEmojiSelect = (emojiObject: any) => {
+    setInputText(prev => prev + emojiObject.emoji);
   };
 
   const handleSend = () => {

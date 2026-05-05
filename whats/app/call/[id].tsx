@@ -4,7 +4,7 @@ import { useLocalSearchParams, useRouter, Stack } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import Animated, { useSharedValue, useAnimatedStyle, withRepeat, withTiming, withSequence, Easing, FadeIn, FadeOut } from 'react-native-reanimated';
-import { chats } from '../../data/dummy';
+import { useStore } from '../../store/useStore';
 
 const { width, height } = Dimensions.get('window');
 
@@ -12,6 +12,7 @@ export default function CallScreen() {
   const { id, type } = useLocalSearchParams();
   const router = useRouter();
   const isVideo = type === 'video';
+  const chats = useStore(state => state.chats);
   const chatInfo = chats.find(c => c.id === id);
 
   const [permission, requestPermission] = useCameraPermissions();

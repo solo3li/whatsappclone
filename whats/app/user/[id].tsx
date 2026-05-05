@@ -4,7 +4,6 @@ import { useLocalSearchParams, useRouter, Stack } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import Colors from '../../constants/Colors';
 import { useStore } from '../../store/useStore';
-import { chats } from '../../data/dummy';
 
 export default function UserProfileScreen() {
   const { id } = useLocalSearchParams();
@@ -15,6 +14,7 @@ export default function UserProfileScreen() {
   const blockUser = useStore(state => state.blockUser);
   const unblockUser = useStore(state => state.unblockUser);
   const blockedUsers = useStore(state => state.blockedUsers);
+  const chats = useStore(state => state.chats);
   
   // Find user details. In a real app this would come from a users table.
   const chatInfo = chats.find(c => c.id === id);
