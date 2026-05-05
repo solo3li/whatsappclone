@@ -1,11 +1,11 @@
 # Project Overview
 
-This directory contains the source code for a WhatsApp clone, primarily organized into two main parts: an Expo-based React Native frontend (`whats`) and a planned backend (`server`).
+This directory contains the source code for a WhatsApp clone, primarily organized into two main parts: an Expo-based React Native frontend (`whats`) and an ASP.NET Core backend (`server`).
 
 ## Project Structure
 
-- **`whats/`**: The frontend application. It is a React Native project built using the [Expo framework](https://expo.dev/) and utilizes [Expo Router](https://docs.expo.dev/router/introduction/) for file-based routing. The project is configured with TypeScript, strict linting (ESLint), and takes advantage of modern Expo experiments like Typed Routes and the React Compiler.
-- **`server/`**: Intended for backend development. Currently, this directory is empty.
+- **`whats/`**: The frontend application. Follows **Senior Full Stack Expo** standards. It is a React Native project built using the [Expo framework](https://expo.dev/) and utilizes [Expo Router](https://docs.expo.dev/router/introduction/) for file-based routing. The project is configured with TypeScript, strict linting (ESLint), and takes advantage of modern Expo experiments like Typed Routes and the React Compiler.
+- **`server/`**: The backend services directory. This project uses **ASP.NET Core** (C#) for high-performance API development and real-time communication.
 
 ## Tech Stack & Architecture (Frontend)
 
@@ -49,6 +49,26 @@ cd whats
   npm run lint
   ```
 
+## Application Map (Screens)
+
+The application follows a structured navigation flow using Expo Router. Below is a map of all current screens:
+
+### Authentication Flow (`(auth)`)
+- **Login (`login.tsx`)**: Email-based entry screen for account verification.
+- **Verification (`verify.tsx`)**: OTP entry and initial profile setup (name/photo).
+
+### Main Tab Navigation (`(tabs)`)
+- **Chats (`index.tsx`)**: List of active conversations with unread counts and message previews.
+- **Updates (`updates.tsx`)**: Status updates (stories) with a full-screen viewer and reaction system.
+- **Communities (`communities.tsx`)**: Placeholder for community-based features.
+- **Calls (`calls.tsx`)**: History of voice and video calls.
+
+### Feature Screens
+- **Chat Detail (`chat/[id].tsx`)**: Core messaging interface. Supports text, reactions, replies, edits, deletions, camera/gallery attachments, and audio visualizers.
+- **Call View (`call/[id].tsx`)**: Simulated voice and video call interfaces with real-time camera feedback.
+- **Contact Info (`user/[id].tsx`)**: Detailed user profile view with blocking/unblocking logic and quick call/chat actions.
+- **Select Contact (`contacts.tsx`)**: Searchable contact list to initiate new chat sessions.
+
 ## Development Conventions & Senior Expo Practices
 
 1.  **Routing**: The application uses Expo's file-based routing. All new screens and navigation layouts should be placed inside the `whats/app` directory.
@@ -64,10 +84,15 @@ cd whats
     - Used `expo-document-picker` for comprehensive file handling.
     - Used `expo-av` for WhatsApp-style audio recording, playback, and inline previews.
     - Used `expo-camera` for real-time live video call simulations.
-5.  **Multiagent & Advanced AI Skills Integration**:
-    - When extending features across the tech stack (e.g., bridging frontend with the `server/` directory), deploy multiagent workflows that combine specialized React Native UI synthesis with robust Node.js/Python server-side generation.
+5.  **Parallel Multi-Agent & Advanced AI Orchestration**:
+    - When executing complex tasks, leverage **Parallel Multi-Agent** workflows. Deploy multiple specialized agents (e.g., UI Synthesis and Backend Logic) concurrently to accelerate delivery.
+    - Maintain a strict **Senior Full Stack** perspective: every change must be idiomatically correct for both the Expo SDK and the .NET ecosystem.
     - Ensure AI tools generate idiomatically correct React Native primitives and strictly follow Expo SDK conventions instead of older Bare React Native workflows.
 
 ## Backend Integration
 
-The `server` folder is currently empty. Any API development, database configurations, or backend logic should be initialized within that directory when the time comes.
+The `server` folder is the home for the **ASP.NET Core** backend.
+- Use **C#** and the latest **.NET SDK**.
+- Prioritize **Entity Framework Core** for database interactions.
+- Utilize **SignalR** for real-time messaging synchronization between the Expo frontend and the ASP.NET Core backend.
+- Ensure all API endpoints are documented via **Swagger/OpenAPI**.
