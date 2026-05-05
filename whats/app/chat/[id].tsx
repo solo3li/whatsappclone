@@ -250,20 +250,20 @@ export default function ChatScreen() {
   };
 
   const handleFilePick = async () => {
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ['images'],
-      quality: 0.8,
-    });
-    if (!result.canceled) {
-      const newMessage = {
-        id: Math.random().toString(),
-        text: '',
-        image: result.assets[0].uri,
-        sender: 'Me',
-        time: '12:00 PM', // Using dummy date
-        isMe: true
-      };
-      setChatMessages(prev => [...prev, newMessage]);
+    try {
+      const result = await DocumentPicker.getDocumentAsync({});
+      if (!result.canceled && result.assets && result.assets.length > 0) {
+        const newMessage = {
+          id: Math.random().toString(),
+          text: '📄 ' + result.assets[0].name,
+          sender: 'Me',
+          time: '12:00 PM', // Using dummy date
+          isMe: true
+        };
+        setChatMessages(prev => [...prev, newMessage]);
+      }
+    } catch (error) {
+      console.error('Error picking document', error);
     }
   };
 
