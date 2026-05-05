@@ -4,6 +4,7 @@ import { useLocalSearchParams, Stack } from 'expo-router';
 import Animated, { FadeInUp, SlideInRight } from 'react-native-reanimated';
 import * as ImagePicker from 'expo-image-picker';
 import * as DocumentPicker from 'expo-document-picker';
+import EmojiPicker from 'rn-emoji-keyboard';
 import { messages, chats } from '../../data/dummy';
 import Colors from '../../constants/Colors';
 import { Ionicons } from '@expo/vector-icons';
@@ -18,6 +19,7 @@ export default function ChatScreen() {
 
   const [chatMessages, setChatMessages] = useState(initialMessages);
   const [inputText, setInputText] = useState('');
+  const [isEmojiPickerOpen, setIsEmojiPickerOpen] = useState(false);
 
   const handleSend = () => {
     if (!inputText.trim()) return;
@@ -74,8 +76,8 @@ export default function ChatScreen() {
     }
   };
 
-  const handleEmoji = () => {
-    setInputText(prev => prev + '😀');
+  const handleEmojiSelect = (emojiObject: any) => {
+    setInputText(prev => prev + emojiObject.emoji);
   };
 
   const renderMessage = ({ item, index }: { item: any, index: number }) => {
@@ -144,7 +146,7 @@ export default function ChatScreen() {
           />
           <Animated.View entering={FadeInUp.duration(400)} style={styles.inputContainer}>
             <View style={[styles.inputInner, { backgroundColor: colors.background }]}>
-              <TouchableOpacity onPress={handleEmoji}>
+              <TouchableOpacity onPress={() => setIsEmojiPickerOpen(true)}>
                 <Ionicons name="happy-outline" size={24} color={colors.secondaryText} style={styles.icon} />
               </TouchableOpacity>
               <TextInput 
@@ -171,6 +173,24 @@ export default function ChatScreen() {
           </Animated.View>
         </KeyboardAvoidingView>
       </ImageBackground>
+      <EmojiPicker 
+        onEmojiSelected={handleEmojiSelect} 
+        open={isEmojiPickerOpen} 
+        onClose={() => setIsEmojiPickerOpen(false)}
+        theme={{
+          backdrop: '#16161888',
+          knob: colors.tint,
+          container: colors.background,
+          header: colors.text,
+          skinTonesContainer: colors.divider,
+          category: {
+            icon: colors.tabIconDefault,
+            iconActive: colors.tint,
+            container: colors.background,
+            containerActive: colors.divider,
+          },
+        }}
+      />
     </>
   );
 }
