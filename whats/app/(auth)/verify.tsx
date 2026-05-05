@@ -197,4 +197,3 @@ const styles = StyleSheet.create({
     marginBottom: 30,
   }
 });
-import { Ionicons } from '@expo/vector-icons';

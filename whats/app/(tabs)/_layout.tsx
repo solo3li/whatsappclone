@@ -3,10 +3,17 @@ import { useColorScheme } from 'react-native';
 import Colors from '../../constants/Colors';
 import { Ionicons, MaterialIcons } from '@expo/vector-icons';
 import { View } from 'react-native';
+import { useStore } from '../../store/useStore';
+import { calls } from '../../data/dummy';
 
 export default function TabLayout() {
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
+  
+  const chats = useStore((state) => state.chats);
+  const unreadChats = chats.reduce((sum, chat) => sum + (chat.unread || 0), 0);
+  
+  const missedCalls = calls.filter(call => call.type === 'missed').length;
 
   return (
     <Tabs
@@ -39,7 +46,7 @@ export default function TabLayout() {
           title: 'WhatsApp',
           tabBarLabel: 'Chats',
           tabBarIcon: ({ color }) => <Ionicons name="chatbubbles" size={24} color={color} />,
-          tabBarBadge: 3,
+          tabBarBadge: unreadChats > 0 ? unreadChats : undefined,
           tabBarBadgeStyle: { backgroundColor: colors.tint }
         }}
       />
@@ -62,6 +69,8 @@ export default function TabLayout() {
         options={{
           title: 'Calls',
           tabBarIcon: ({ color }) => <Ionicons name="call" size={24} color={color} />,
+          tabBarBadge: missedCalls > 0 ? missedCalls : undefined,
+          tabBarBadgeStyle: { backgroundColor: colors.tint }
         }}
       />
     </Tabs>

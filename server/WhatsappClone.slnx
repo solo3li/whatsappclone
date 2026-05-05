@@ -1,4 +1,5 @@
 <Solution>
   <Project Path="WhatsappClone.Api/WhatsappClone.Api.csproj" />
+  <Project Path="WhatsappClone.IntegrationTests/WhatsappClone.IntegrationTests.csproj" />
   <Project Path="WhatsappClone.Tests/WhatsappClone.Tests.csproj" />
 </Solution>
