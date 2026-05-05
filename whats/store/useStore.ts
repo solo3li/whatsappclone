@@ -23,6 +23,7 @@ export interface Message {
   fileName?: string;
   fileSize?: string;
   replyTo?: string; // id of message being replied to
+  replyText?: string; // content/type of message being replied to
   isForwarded?: boolean;
 }
 

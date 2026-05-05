@@ -1,7 +1,7 @@
-import { View, Text, StyleSheet, ImageBackground, FlatList, TextInput, KeyboardAvoidingView, Platform, useColorScheme, Image, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, ImageBackground, FlatList, TextInput, KeyboardAvoidingView, Platform, useColorScheme, Image, TouchableOpacity, Modal, BlurView } from 'react-native';
 import { useState, useEffect } from 'react';
 import { useLocalSearchParams, Stack, useRouter } from 'expo-router';
-import Animated, { FadeInUp, SlideInRight, useSharedValue, useAnimatedStyle, withRepeat, withTiming } from 'react-native-reanimated';
+import Animated, { FadeInUp, SlideInRight, SlideInDown, FadeIn, FadeOut, useSharedValue, useAnimatedStyle, withRepeat, withTiming } from 'react-native-reanimated';
 import * as ImagePicker from 'expo-image-picker';
 import * as DocumentPicker from 'expo-document-picker';
 import EmojiPicker from 'rn-emoji-keyboard';
@@ -158,12 +158,17 @@ export default function ChatScreen() {
   const chats = useStore(state => state.chats);
   const allMessages = useStore(state => state.messages);
   const addMessage = useStore(state => state.addMessage);
+  const deleteMessage = useStore(state => state.deleteMessage);
+  const editMessage = useStore(state => state.editMessage);
 
   const chatInfo = chats.find(c => c.id === id);
   const chatMessages = allMessages[id as string] || [];
 
   const [inputText, setInputText] = useState('');
   const [isEmojiPickerOpen, setIsEmojiPickerOpen] = useState(false);
+  const [replyingTo, setReplyingTo] = useState<any>(null);
+  const [selectedMessage, setSelectedMessage] = useState<any>(null);
+  const [editingMsgId, setEditingMsgId] = useState<string | null>(null);
 
   // Audio Recording State
   const [recording, setRecording] = useState<Audio.Recording | null>(null);
@@ -310,77 +315,36 @@ export default function ChatScreen() {
 
   const sendAudio = () => {
     if (previewUri) {
-      const newMessage = {
-        id: Math.random().toString(),
+      addMessage(id as string, {
         text: '',
         audio: previewUri,
         duration: recordingDuration,
         metering: meteringData,
-        sender: 'Me',
         time: '12:00 PM', // Using dummy date
-        isMe: true
-      };
-      setChatMessages(prev => [...prev, newMessage]);
+      });
       cancelPreview();
     }
   };
 
   const handleMessageAction = (msg: any) => {
-    if (Platform.OS === 'ios') {
-      import('react-native').then(({ ActionSheetIOS }) => {
-        const options = msg.isMe ? ['Cancel', 'Reply', 'Forward', 'Edit', 'Delete'] : ['Cancel', 'Reply', 'Forward'];
-        const destructiveButtonIndex = msg.isMe ? 4 : undefined;
-        const cancelButtonIndex = 0;
-
-        ActionSheetIOS.showActionSheetWithOptions(
-          { options, cancelButtonIndex, destructiveButtonIndex },
-          (buttonIndex) => {
-            handleActionSelection(buttonIndex, msg, options);
-          }
-        );
-      });
-    } else {
-      import('react-native').then(({ Alert }) => {
-        const buttons: any[] = [
-          { text: 'Reply', onPress: () => handleReply(msg) },
-          { text: 'Forward', onPress: () => handleForward(msg) },
-        ];
-        if (msg.isMe) {
-          buttons.push({ text: 'Edit', onPress: () => handleEditRequest(msg) });
-          buttons.push({ text: 'Delete', onPress: () => deleteMessage(id as string, msg.id), style: 'destructive' });
-        }
-        buttons.push({ text: 'Cancel', style: 'cancel' });
-        Alert.alert('Message Options', '', buttons);
-      });
-    }
-  };
-
-  const deleteMessage = useStore(state => state.deleteMessage);
-  const editMessage = useStore(state => state.editMessage);
-
-  const handleActionSelection = (index: number, msg: any, options: string[]) => {
-    const action = options[index];
-    if (action === 'Reply') handleReply(msg);
-    if (action === 'Forward') handleForward(msg);
-    if (action === 'Edit') handleEditRequest(msg);
-    if (action === 'Delete') deleteMessage(id as string, msg.id);
+    setSelectedMessage(msg);
   };
 
   const handleReply = (msg: any) => {
-    // Basic implementation: prepend reply text to input for now
-    setInputText(`Replying to: "${msg.text || 'Media'}"\n\n`);
+    setReplyingTo(msg);
+    setSelectedMessage(null);
   };
 
   const handleForward = (msg: any) => {
     alert("Forwarding logic would open a contact picker here");
+    setSelectedMessage(null);
   };
-
-  const [editingMsgId, setEditingMsgId] = useState<string | null>(null);
 
   const handleEditRequest = (msg: any) => {
     if (msg.text) {
       setEditingMsgId(msg.id);
       setInputText(msg.text);
+      setSelectedMessage(null);
     } else {
       alert("Can only edit text messages");
     }
@@ -481,9 +445,12 @@ export default function ChatScreen() {
       addMessage(id as string, {
         text: inputText,
         time: '12:00 PM', // Using dummy date
+        replyTo: replyingTo?.id,
+        replyText: replyingTo?.text || (replyingTo?.image ? '📷 Photo' : replyingTo?.audio ? '🎤 Audio' : replyingTo?.fileUri ? '📄 Document' : undefined)
       });
     }
     setInputText('');
+    setReplyingTo(null);
   };
 
   const renderMessage = ({ item, index }: { item: any, index: number }) => {
@@ -512,6 +479,15 @@ export default function ChatScreen() {
               ? { backgroundColor: colors.messageBackground, borderTopRightRadius: 0 } 
               : { backgroundColor: colors.messageIncoming, borderTopLeftRadius: 0 }
           ]}>
+            {item.replyTo && (
+              <View style={[styles.replyContainerInBubble, { backgroundColor: isMe ? 'rgba(0,0,0,0.05)' : 'rgba(255,255,255,0.2)' }]}>
+                <View style={[styles.replyBar, { backgroundColor: colors.tint }]} />
+                <View style={{ flex: 1, paddingLeft: 8 }}>
+                  <Text style={{ color: colors.tint, fontWeight: 'bold', fontSize: 12 }}>{item.sender === 'Me' ? 'You' : item.sender}</Text>
+                  <Text style={{ color: colors.secondaryText, fontSize: 13 }} numberOfLines={1}>{item.replyText}</Text>
+                </View>
+              </View>
+            )}
             {item.isForwarded && (
                <Text style={{ color: colors.secondaryText, fontSize: 12, fontStyle: 'italic', marginBottom: 4 }}><Ionicons name="arrow-redo-outline" size={12} /> Forwarded</Text>
             )}
@@ -574,6 +550,22 @@ export default function ChatScreen() {
             renderItem={renderMessage}
             contentContainerStyle={styles.messageContainer}
           />
+
+          {replyingTo && (
+            <Animated.View entering={FadeInUp} style={[styles.replyPreview, { backgroundColor: colors.background }]}>
+              <View style={[styles.replyBar, { backgroundColor: colors.tint }]} />
+              <View style={{ flex: 1, paddingHorizontal: 10 }}>
+                <Text style={{ color: colors.tint, fontWeight: 'bold' }}>{replyingTo.isMe ? 'You' : chatInfo?.user}</Text>
+                <Text style={{ color: colors.secondaryText }} numberOfLines={1}>
+                  {replyingTo.text || (replyingTo.image ? '📷 Photo' : replyingTo.audio ? '🎤 Audio' : '📄 Document')}
+                </Text>
+              </View>
+              <TouchableOpacity onPress={() => setReplyingTo(null)} style={{ padding: 10 }}>
+                <Ionicons name="close-circle" size={20} color={colors.secondaryText} />
+              </TouchableOpacity>
+            </Animated.View>
+          )}
+
           <Animated.View entering={FadeInUp.duration(400)} style={styles.inputContainer}>
             {previewUri ? (
               <View style={[styles.inputInner, { backgroundColor: colors.background, justifyContent: 'space-between', paddingHorizontal: 5 }]}>
@@ -654,6 +646,52 @@ export default function ChatScreen() {
           },
         }}
       />
+
+      <Modal
+        visible={!!selectedMessage}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setSelectedMessage(null)}
+      >
+        <TouchableOpacity 
+          style={styles.modalOverlay} 
+          activeOpacity={1} 
+          onPress={() => setSelectedMessage(null)}
+        >
+          <Animated.View 
+            entering={SlideInDown.springify().damping(20)}
+            exiting={FadeOut}
+            style={[styles.menuContainer, { backgroundColor: colors.background }]}
+          >
+            <TouchableOpacity style={styles.menuItem} onPress={() => handleReply(selectedMessage)}>
+              <Ionicons name="arrow-undo-outline" size={22} color={colors.text} />
+              <Text style={[styles.menuText, { color: colors.text }]}>Reply</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.menuItem} onPress={() => handleForward(selectedMessage)}>
+              <Ionicons name="arrow-redo-outline" size={22} color={colors.text} />
+              <Text style={[styles.menuText, { color: colors.text }]}>Forward</Text>
+            </TouchableOpacity>
+            {selectedMessage?.isMe && (
+              <>
+                <TouchableOpacity style={styles.menuItem} onPress={() => handleEditRequest(selectedMessage)}>
+                  <Ionicons name="pencil-outline" size={22} color={colors.text} />
+                  <Text style={[styles.menuText, { color: colors.text }]}>Edit</Text>
+                </TouchableOpacity>
+                <TouchableOpacity 
+                  style={[styles.menuItem, { borderBottomWidth: 0 }]} 
+                  onPress={() => {
+                    deleteMessage(id as string, selectedMessage.id);
+                    setSelectedMessage(null);
+                  }}
+                >
+                  <Ionicons name="trash-outline" size={22} color="#FF3B30" />
+                  <Text style={[styles.menuText, { color: '#FF3B30' }]}>Delete</Text>
+                </TouchableOpacity>
+              </>
+            )}
+          </Animated.View>
+        </TouchableOpacity>
+      </Modal>
     </>
   );
 }
@@ -733,5 +771,56 @@ const styles = StyleSheet.create({
     borderRadius: 24,
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  replyPreview: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 8,
+    borderTopLeftRadius: 15,
+    borderTopRightRadius: 15,
+    marginHorizontal: 10,
+    marginBottom: -5,
+  },
+  replyBar: {
+    width: 4,
+    height: '80%',
+    borderRadius: 2,
+    marginLeft: 5,
+  },
+  replyContainerInBubble: {
+    flexDirection: 'row',
+    borderRadius: 6,
+    paddingVertical: 5,
+    marginBottom: 8,
+    overflow: 'hidden',
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'flex-end',
+  },
+  menuContainer: {
+    width: '100%',
+    borderTopLeftRadius: 25,
+    borderTopRightRadius: 25,
+    padding: 20,
+    paddingBottom: Platform.OS === 'ios' ? 40 : 20,
+    elevation: 5,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 10,
+  },
+  menuItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 15,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: 'rgba(0,0,0,0.1)',
+  },
+  menuText: {
+    fontSize: 18,
+    marginLeft: 15,
+    fontWeight: '500',
   }
 });
