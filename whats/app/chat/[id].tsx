@@ -42,6 +42,23 @@ const FileMessage = ({ name, uri, size, colors }: { name: string, uri: string, s
   );
 };
 
+const AnimatedBar = ({ targetHeight, isActive, activeColor, inactiveColor }: { targetHeight: number, isActive: boolean, activeColor: string, inactiveColor: string }) => {
+  const animatedHeight = useSharedValue(3);
+
+  useEffect(() => {
+    animatedHeight.value = withTiming(Math.max(3, targetHeight), { duration: 80 });
+  }, [targetHeight]);
+
+  const animatedStyle = useAnimatedStyle(() => ({
+    height: animatedHeight.value,
+    backgroundColor: isActive ? activeColor : inactiveColor
+  }));
+
+  return (
+    <Animated.View style={[{ width: 3, borderRadius: 2 }, animatedStyle]} />
+  );
+};
+
 const Waveform = ({ position, duration, activeColor, inactiveColor, meteringData }: { position: number, duration: number, activeColor: string, inactiveColor: string, meteringData?: number[] }) => {
   const [staticBars] = useState(() => Array.from({ length: 40 }, () => Math.random() * 20 + 5));
   const currentBars = meteringData && meteringData.length > 0 ? meteringData : staticBars;
@@ -57,14 +74,12 @@ const Waveform = ({ position, duration, activeColor, inactiveColor, meteringData
       {paddedBars.map((height, index) => {
         const isActive = duration === 0 || (index / 40) <= progress;
         return (
-          <View 
-            key={index} 
-            style={{ 
-              width: 3, 
-              height: Math.max(3, height), 
-              backgroundColor: isActive ? activeColor : inactiveColor, 
-              borderRadius: 2 
-            }} 
+          <AnimatedBar 
+            key={index}
+            targetHeight={height}
+            isActive={isActive}
+            activeColor={activeColor}
+            inactiveColor={inactiveColor}
           />
         );
       })}
@@ -210,6 +225,13 @@ export default function ChatScreen() {
                   const db = Math.max(status.metering as number, min);
                   const normalized = ((db - min) / Math.abs(min)) * 25 + 5;
                   const newData = [...prev, normalized];
+                  if (newData.length > 40) return newData.slice(newData.length - 40);
+                  return newData;
+                });
+              } else {
+                setMeteringData(prev => {
+                  const simulated = Math.random() * 20 + 5;
+                  const newData = [...prev, simulated];
                   if (newData.length > 40) return newData.slice(newData.length - 40);
                   return newData;
                 });
