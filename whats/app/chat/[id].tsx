@@ -387,12 +387,56 @@ export default function ChatScreen() {
   };
 
   const handleCamera = async () => {
+    if (Platform.OS === 'ios') {
+      import('react-native').then(({ ActionSheetIOS }) => {
+        ActionSheetIOS.showActionSheetWithOptions(
+          {
+            options: ['Cancel', 'Camera', 'Photo Library'],
+            cancelButtonIndex: 0,
+          },
+          (buttonIndex) => {
+            if (buttonIndex === 1) openCamera();
+            if (buttonIndex === 2) openGallery();
+          }
+        );
+      });
+    } else {
+      import('react-native').then(({ Alert }) => {
+        Alert.alert('Select Source', '', [
+          { text: 'Camera', onPress: openCamera },
+          { text: 'Gallery', onPress: openGallery },
+          { text: 'Cancel', style: 'cancel' },
+        ]);
+      });
+    }
+  };
+
+  const openCamera = async () => {
     const permissionResult = await ImagePicker.requestCameraPermissionsAsync();
     if (permissionResult.granted === false) {
       alert("Camera permissions are required!");
       return;
     }
     const result = await ImagePicker.launchCameraAsync({
+      mediaTypes: ['images'],
+      quality: 0.8,
+    });
+    if (!result.canceled) {
+      addMessage(id as string, {
+        text: '',
+        image: result.assets[0].uri,
+        time: '12:00 PM', // Using dummy date
+      });
+    }
+  };
+
+  const openGallery = async () => {
+    const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (permissionResult.granted === false) {
+      alert("Media library permissions are required!");
+      return;
+    }
+    const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ['images'],
       quality: 0.8,
     });

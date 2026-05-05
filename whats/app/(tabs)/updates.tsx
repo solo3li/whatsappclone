@@ -4,6 +4,7 @@ import Animated, { FadeInRight, useSharedValue, useAnimatedStyle, withTiming, ru
 import { updates } from '../../data/dummy';
 import Colors from '../../constants/Colors';
 import { Ionicons } from '@expo/vector-icons';
+import { useStore } from '../../store/useStore';
 
 const { width, height } = Dimensions.get('window');
 
@@ -12,27 +13,43 @@ export default function UpdatesScreen() {
   const colors = Colors[colorScheme ?? 'light'];
   
   const [selectedStatus, setSelectedStatus] = useState<any>(null);
+  const [showReactions, setShowReactions] = useState(false);
   const progress = useSharedValue(0);
+
+  const statusReactions = useStore(state => state.statusReactions);
+  const addStatusReaction = useStore(state => state.addStatusReaction);
+
+  const reactions = selectedStatus ? statusReactions[selectedStatus.id] || [] : [];
+  const quickEmojis = ['❤️', '😂', '😮', '😢', '🙏', '👏'];
 
   const closeStatus = () => {
     setSelectedStatus(null);
     progress.value = 0;
+    setShowReactions(false);
   };
 
   useEffect(() => {
-    if (selectedStatus) {
-      progress.value = 0;
+    if (selectedStatus && !showReactions) {
       progress.value = withTiming(1, { duration: 5000 }, (finished) => {
         if (finished) {
           runOnJS(closeStatus)();
         }
       });
+    } else if (showReactions) {
+      // Pause progress by keeping current value
+      progress.value = progress.value;
     }
-  }, [selectedStatus]);
+  }, [selectedStatus, showReactions]);
 
   const progressStyle = useAnimatedStyle(() => ({
     width: `${progress.value * 100}%`,
   }));
+
+  const handleReaction = (emoji: string) => {
+    if (selectedStatus) {
+      addStatusReaction(selectedStatus.id, emoji);
+    }
+  };
 
   const renderItem = ({ item, index }: { item: any; index: number }) => (
     <TouchableOpacity onPress={() => setSelectedStatus(item)}>
@@ -86,6 +103,46 @@ export default function UpdatesScreen() {
                    </TouchableOpacity>
                 </View>
               </View>
+
+              <View style={styles.statusFooter}>
+                <TouchableOpacity 
+                  style={styles.viewReactionsButton} 
+                  onPress={() => setShowReactions(true)}
+                >
+                  <Ionicons name="chevron-up" size={24} color="#fff" />
+                  <Text style={{ color: '#fff', fontWeight: 'bold' }}>{reactions.length} Reactions</Text>
+                </TouchableOpacity>
+
+                <View style={styles.quickReactions}>
+                  {quickEmojis.map(emoji => (
+                    <TouchableOpacity key={emoji} onPress={() => handleReaction(emoji)} style={styles.emojiButton}>
+                      <Text style={{ fontSize: 24 }}>{emoji}</Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </View>
+
+              {showReactions && (
+                <View style={styles.reactionsSheet}>
+                  <View style={styles.sheetHeader}>
+                    <Text style={styles.sheetTitle}>Reactions</Text>
+                    <TouchableOpacity onPress={() => setShowReactions(false)}>
+                      <Ionicons name="close" size={24} color="#fff" />
+                    </TouchableOpacity>
+                  </View>
+                  <FlatList
+                    data={reactions}
+                    keyExtractor={(_, i) => i.toString()}
+                    renderItem={({ item }) => (
+                      <View style={styles.reactionRow}>
+                        <Text style={{ fontSize: 24 }}>{item.emoji}</Text>
+                        <Text style={styles.reactionUser}>{item.user}</Text>
+                      </View>
+                    )}
+                    ListEmptyComponent={<Text style={{ color: '#aaa', textAlign: 'center', marginTop: 20 }}>No reactions yet</Text>}
+                  />
+                </View>
+              )}
             </>
           )}
         </View>
@@ -186,5 +243,60 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 12,
     opacity: 0.8,
+  },
+  statusFooter: {
+    position: 'absolute',
+    bottom: 40,
+    left: 0,
+    right: 0,
+    alignItems: 'center',
+  },
+  quickReactions: {
+    flexDirection: 'row',
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    borderRadius: 30,
+    padding: 10,
+    marginTop: 15,
+  },
+  emojiButton: {
+    paddingHorizontal: 10,
+  },
+  viewReactionsButton: {
+    alignItems: 'center',
+  },
+  reactionsSheet: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    height: '50%',
+    backgroundColor: '#1C1C1E',
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    padding: 20,
+  },
+  sheetHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  sheetTitle: {
+    color: '#fff',
+    fontSize: 18,
+    fontWeight: 'bold',
+  },
+  reactionRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 12,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: '#333',
+  },
+  reactionUser: {
+    color: '#fff',
+    marginLeft: 15,
+    fontSize: 16,
+    fontWeight: '500',
   }
 });

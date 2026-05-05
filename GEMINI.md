@@ -56,7 +56,8 @@ cd whats
 3.  **Data Strategy**:
     - **Global State:** We use Zustand (`store/useStore.ts`) to manage all chat, message, block/unblock, and authentication states globally. Dummy data from `@whats/data/dummy.ts` is only used to seed this store initially until a real backend is implemented.
     - **Authentication:** The app uses an **Email + OTP** authentication flow. Users enter their email address, receive a (simulated) 6-digit verification code, and then set up their profile.
-    - **Status Features:** The application supports full-screen status viewing (stories) in the Updates tab with progress indicators and automatic transitions.
+    - **Status Features:** The application supports full-screen status viewing (stories) in the Updates tab with progress indicators, automatic transitions, and a **Reaction System** (send emojis and view the list of people who reacted).
+    - **Media Handling:** The chat interface provides a unified media picker via the camera icon, allowing users to choose between capturing a new photo with the **Camera** or selecting existing media from the **Photo Library**.
     - **Dummy Data Constraints:** Critically: only use dummy dates (e.g., '12:00 PM', 'Yesterday') in chat records and message timestamps to maintain consistency across dummy payloads until a real backend strategy is implemented.
 4.  **Hardware & Native Features**: We leverage modern Expo libraries to access native features rather than building custom bridges.
     - Used `expo-image-picker` for robust camera interactions.

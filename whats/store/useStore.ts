@@ -42,6 +42,7 @@ interface AppState {
   messages: Record<string, Message[]>;
   blockedUsers: string[];
   contacts: User[]; // Simulated contacts
+  statusReactions: Record<string, { emoji: string, user: string }[]>;
   
   // Auth Actions
   login: (email: string, name: string) => void;
@@ -61,6 +62,9 @@ interface AppState {
   // Block Actions
   blockUser: (userId: string) => void;
   unblockUser: (userId: string) => void;
+
+  // Status Actions
+  addStatusReaction: (statusId: string, emoji: string) => void;
 }
 
 // Transform initial dummy messages to fit our Record type
@@ -76,6 +80,7 @@ export const useStore = create<AppState>((set, get) => ({
   chats: initialChats,
   messages: messagesRecord,
   blockedUsers: [],
+  statusReactions: {},
   contacts: [
     { id: '1', email: 'alice@example.com', name: 'Alice', avatar: 'https://i.pravatar.cc/150?img=1', status: 'Available' },
     { id: '2', email: 'bob@example.com', name: 'Bob', avatar: 'https://i.pravatar.cc/150?img=2', status: 'Busy' },
@@ -207,5 +212,15 @@ export const useStore = create<AppState>((set, get) => ({
   unblockUser: (userId) => set((state) => ({
     blockedUsers: state.blockedUsers.filter(id => id !== userId)
   })),
+
+  addStatusReaction: (statusId, emoji) => set((state) => {
+    const reactions = state.statusReactions[statusId] || [];
+    return {
+      statusReactions: {
+        ...state.statusReactions,
+        [statusId]: [...reactions, { emoji, user: state.currentUser?.name || 'Me' }]
+      }
+    };
+  }),
 
 }));
