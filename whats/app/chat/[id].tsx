@@ -7,7 +7,7 @@ import * as DocumentPicker from 'expo-document-picker';
 import EmojiPicker from 'rn-emoji-keyboard';
 import { Audio } from 'expo-av';
 import * as Sharing from 'expo-sharing';
-import { messages, chats } from '../../data/dummy';
+import { useStore } from '../../store/useStore';
 import Colors from '../../constants/Colors';
 import { Ionicons } from '@expo/vector-icons';
 
@@ -322,67 +322,79 @@ export default function ChatScreen() {
     }
   };
 
+  const handleMessageAction = (msg: any) => {
+    if (Platform.OS === 'ios') {
+      import('react-native').then(({ ActionSheetIOS }) => {
+        const options = msg.isMe ? ['Cancel', 'Reply', 'Forward', 'Edit', 'Delete'] : ['Cancel', 'Reply', 'Forward'];
+        const destructiveButtonIndex = msg.isMe ? 4 : undefined;
+        const cancelButtonIndex = 0;
+
+        ActionSheetIOS.showActionSheetWithOptions(
+          { options, cancelButtonIndex, destructiveButtonIndex },
+          (buttonIndex) => {
+            handleActionSelection(buttonIndex, msg, options);
+          }
+        );
+      });
+    } else {
+      import('react-native').then(({ Alert }) => {
+        const buttons: any[] = [
+          { text: 'Reply', onPress: () => handleReply(msg) },
+          { text: 'Forward', onPress: () => handleForward(msg) },
+        ];
+        if (msg.isMe) {
+          buttons.push({ text: 'Edit', onPress: () => handleEditRequest(msg) });
+          buttons.push({ text: 'Delete', onPress: () => deleteMessage(id as string, msg.id), style: 'destructive' });
+        }
+        buttons.push({ text: 'Cancel', style: 'cancel' });
+        Alert.alert('Message Options', '', buttons);
+      });
+    }
+  };
+
+  const deleteMessage = useStore(state => state.deleteMessage);
+  const editMessage = useStore(state => state.editMessage);
+
+  const handleActionSelection = (index: number, msg: any, options: string[]) => {
+    const action = options[index];
+    if (action === 'Reply') handleReply(msg);
+    if (action === 'Forward') handleForward(msg);
+    if (action === 'Edit') handleEditRequest(msg);
+    if (action === 'Delete') deleteMessage(id as string, msg.id);
+  };
+
+  const handleReply = (msg: any) => {
+    // Basic implementation: prepend reply text to input for now
+    setInputText(`Replying to: "${msg.text || 'Media'}"\n\n`);
+  };
+
+  const handleForward = (msg: any) => {
+    alert("Forwarding logic would open a contact picker here");
+  };
+
+  const [editingMsgId, setEditingMsgId] = useState<string | null>(null);
+
+  const handleEditRequest = (msg: any) => {
+    if (msg.text) {
+      setEditingMsgId(msg.id);
+      setInputText(msg.text);
+    } else {
+      alert("Can only edit text messages");
+    }
+  };
+
   const handleSend = () => {
     if (!inputText.trim()) return;
-    const newMessage = {
-      id: Math.random().toString(),
-      text: inputText,
-      sender: 'Me',
-      time: '12:00 PM', // Using dummy date
-      isMe: true
-    };
-    setChatMessages(prev => [...prev, newMessage]);
-    setInputText('');
-  };
-
-  const handleCamera = async () => {
-    const permissionResult = await ImagePicker.requestCameraPermissionsAsync();
-    if (permissionResult.granted === false) {
-      alert("Camera permissions are required!");
-      return;
-    }
-    const result = await ImagePicker.launchCameraAsync({
-      mediaTypes: ['images'],
-      quality: 0.8,
-    });
-    if (!result.canceled) {
-      const newMessage = {
-        id: Math.random().toString(),
-        text: '',
-        image: result.assets[0].uri,
-        sender: 'Me',
+    if (editingMsgId) {
+      editMessage(id as string, editingMsgId, inputText);
+      setEditingMsgId(null);
+    } else {
+      addMessage(id as string, {
+        text: inputText,
         time: '12:00 PM', // Using dummy date
-        isMe: true
-      };
-      setChatMessages(prev => [...prev, newMessage]);
+      });
     }
-  };
-
-  const handleFilePick = async () => {
-    try {
-      const result = await DocumentPicker.getDocumentAsync({});
-      if (!result.canceled && result.assets && result.assets.length > 0) {
-        const asset = result.assets[0];
-        const sizeStr = asset.size ? (asset.size / 1024 / 1024).toFixed(2) + ' MB' : 'Unknown size';
-        const newMessage = {
-          id: Math.random().toString(),
-          text: '',
-          fileName: asset.name,
-          fileUri: asset.uri,
-          fileSize: sizeStr,
-          sender: 'Me',
-          time: '12:00 PM', // Using dummy date
-          isMe: true
-        };
-        setChatMessages(prev => [...prev, newMessage]);
-      }
-    } catch (error) {
-      console.error('Error picking document', error);
-    }
-  };
-
-  const handleEmojiSelect = (emojiObject: any) => {
-    setInputText(prev => prev + emojiObject.emoji);
+    setInputText('');
   };
 
   const renderMessage = ({ item, index }: { item: any, index: number }) => {
@@ -395,27 +407,41 @@ export default function ChatScreen() {
           isMe ? styles.messageWrapperMe : styles.messageWrapperOther
         ]}
       >
-        <View style={[
-          styles.messageBubble,
-          isMe 
-            ? { backgroundColor: colors.messageBackground, borderTopRightRadius: 0 } 
-            : { backgroundColor: colors.messageIncoming, borderTopLeftRadius: 0 }
-        ]}>
-          {item.image && (
-            <Image 
-              source={{ uri: item.image }} 
-              style={[styles.messageImage, { marginBottom: item.text || item.audio || item.fileUri ? 5 : 0 }]} 
-            />
+        <TouchableOpacity 
+          onLongPress={() => handleMessageAction(item)}
+          activeOpacity={0.8}
+          style={{ flexDirection: 'row', alignItems: 'flex-end' }}
+        >
+          {!isMe && chatInfo?.avatar && (
+            <TouchableOpacity onPress={() => router.push(`/user/${id}`)}>
+              <Image source={{ uri: chatInfo.avatar }} style={{ width: 24, height: 24, borderRadius: 12, marginRight: 8, marginBottom: 5 }} />
+            </TouchableOpacity>
           )}
-          {item.audio && (
-            <AudioMessage uri={item.audio} duration={item.duration} colors={colors} />
-          )}
-          {item.fileUri && (
-            <FileMessage name={item.fileName} uri={item.fileUri} size={item.fileSize} colors={colors} />
-          )}
-          {item.text ? <Text style={[styles.messageText, { color: colors.text }]}>{item.text}</Text> : null}
-          <Text style={[styles.messageTime, { color: colors.secondaryText }]}>{item.time}</Text>
-        </View>
+          <View style={[
+            styles.messageBubble,
+            isMe 
+              ? { backgroundColor: colors.messageBackground, borderTopRightRadius: 0 } 
+              : { backgroundColor: colors.messageIncoming, borderTopLeftRadius: 0 }
+          ]}>
+            {item.isForwarded && (
+               <Text style={{ color: colors.secondaryText, fontSize: 12, fontStyle: 'italic', marginBottom: 4 }}><Ionicons name="arrow-redo-outline" size={12} /> Forwarded</Text>
+            )}
+            {item.image && (
+              <Image 
+                source={{ uri: item.image }} 
+                style={[styles.messageImage, { marginBottom: item.text || item.audio || item.fileUri ? 5 : 0 }]} 
+              />
+            )}
+            {item.audio && (
+              <AudioMessage uri={item.audio} duration={item.duration} colors={colors} metering={item.metering} />
+            )}
+            {item.fileUri && (
+              <FileMessage name={item.fileName} uri={item.fileUri} size={item.fileSize} colors={colors} />
+            )}
+            {item.text ? <Text style={[styles.messageText, { color: colors.text }]}>{item.text}</Text> : null}
+            <Text style={[styles.messageTime, { color: colors.secondaryText }]}>{item.time}</Text>
+          </View>
+        </TouchableOpacity>
       </Animated.View>
     );
   };
@@ -425,10 +451,10 @@ export default function ChatScreen() {
       <Stack.Screen 
         options={{
           headerTitle: () => (
-            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+            <TouchableOpacity style={{ flexDirection: 'row', alignItems: 'center' }} onPress={() => router.push(`/user/${id}`)}>
               {chatInfo && <Image source={{ uri: chatInfo.avatar }} style={{ width: 36, height: 36, borderRadius: 18, marginRight: 10 }} />}
               <Text style={{ color: '#fff', fontSize: 18, fontWeight: 'bold' }}>{chatInfo?.user || 'Chat'}</Text>
-            </View>
+            </TouchableOpacity>
           ),
           headerRight: () => (
             <View style={{ flexDirection: 'row', gap: 20 }}>

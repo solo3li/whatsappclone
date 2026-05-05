@@ -12,6 +12,7 @@ This directory contains the source code for a WhatsApp clone, primarily organize
 - **Framework**: React Native with Expo (Version ~54.0.33)
 - **Language**: TypeScript (`~5.9.2`)
 - **Routing**: Expo Router (`~6.0.23`)
+- **State Management**: Zustand for global state (messages, chats, auth, profiles).
 - **Media/File Pickers & Audio**: `expo-image-picker`, `expo-document-picker`, `expo-av`
 - **UI & Animations**: `react-native-reanimated`, `react-native-gesture-handler`, `expo-symbols`, `expo-image`
 - **Linting**: ESLint (`^9.25.0`) with `eslint-config-expo`
@@ -53,7 +54,8 @@ cd whats
 1.  **Routing**: The application uses Expo's file-based routing. All new screens and navigation layouts should be placed inside the `whats/app` directory.
 2.  **TypeScript**: The project relies heavily on TypeScript for type safety. Ensure all new components and utilities are properly typed. The app also has `typedRoutes` enabled, meaning route parameters and navigation functions are statically typed.
 3.  **Data Strategy**:
-    - **Dummy Data Constraints:** Currently, the application heavily utilizes dummy data located in `@whats/data/dummy.ts`. **Critically: only use dummy dates (e.g., '12:00 PM', 'Yesterday') in chat records and message timestamps to maintain consistency across dummy payloads until a real backend strategy is implemented.**
+    - **Global State:** We use Zustand (`store/useStore.ts`) to manage all chat, message, block/unblock, and authentication states globally. Dummy data from `@whats/data/dummy.ts` is only used to seed this store initially until a real backend is implemented.
+    - **Dummy Data Constraints:** Critically: only use dummy dates (e.g., '12:00 PM', 'Yesterday') in chat records and message timestamps to maintain consistency across dummy payloads until a real backend strategy is implemented.
 4.  **Hardware & Native Features**: We leverage modern Expo libraries to access native features rather than building custom bridges.
     - Used `expo-image-picker` for robust camera interactions.
     - Used `expo-document-picker` for comprehensive file handling.

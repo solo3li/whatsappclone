@@ -1,12 +1,15 @@
 import { View, Text, FlatList, StyleSheet, TouchableOpacity, Image, useColorScheme } from 'react-native';
-import { Link } from 'expo-router';
+import { Link, useRouter } from 'expo-router';
 import Animated, { FadeInDown } from 'react-native-reanimated';
-import { chats } from '../../data/dummy';
+import { useStore } from '../../store/useStore';
 import Colors from '../../constants/Colors';
+import { Ionicons } from '@expo/vector-icons';
 
 export default function ChatsScreen() {
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
+  const router = useRouter();
+  const chats = useStore((state) => state.chats);
 
   const renderItem = ({ item, index }: { item: any; index: number }) => (
     <Link href={`/chat/${item.id}`} asChild>
@@ -45,9 +48,11 @@ export default function ChatsScreen() {
         renderItem={renderItem}
         contentContainerStyle={{ paddingBottom: 80 }}
       />
-      <Animated.View entering={FadeInDown.delay(600).duration(500)} style={[styles.fab, { backgroundColor: colors.tint }]}>
-        <Image source={{ uri: 'https://img.icons8.com/ios-filled/50/ffffff/plus-math.png' }} style={{ width: 24, height: 24 }} />
-      </Animated.View>
+      <TouchableOpacity style={[styles.fab, { backgroundColor: colors.tint }]} onPress={() => router.push('/contacts')}>
+        <Animated.View entering={FadeInDown.delay(600).duration(500)}>
+          <Ionicons name="chatbubble-ellipses" size={24} color="#ffffff" />
+        </Animated.View>
+      </TouchableOpacity>
     </View>
   );
 }
