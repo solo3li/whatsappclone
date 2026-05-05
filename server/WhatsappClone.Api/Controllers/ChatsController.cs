@@ -23,15 +23,21 @@ public class ChatsController : ControllerBase
     [HttpGet]
     public async Task<IActionResult> GetChats()
     {
-        var userId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+        var userIdString = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (string.IsNullOrEmpty(userIdString)) return Unauthorized();
+        var userId = Guid.Parse(userIdString);
 
         var chats = await _context.Chats
             .Where(c => c.Participants.Any(p => p.UserId == userId))
             .Select(c => new ChatDto(
                 c.Id,
-                c.IsGroup ? (c.GroupName ?? "Group") : c.Participants.First(p => p.UserId != userId).User.Name ?? "User",
-                c.IsGroup ? (c.GroupIconUrl ?? "") : c.Participants.First(p => p.UserId != userId).User.AvatarUrl ?? "",
-                c.Messages.OrderByDescending(m => m.Timestamp).Select(m => m.Content).FirstOrDefault() ?? "",
+                c.IsGroup 
+                    ? (c.GroupName ?? "Group") 
+                    : (c.Participants.Where(p => p.UserId != userId).Select(p => p.User.Name).FirstOrDefault() ?? "Unknown User"),
+                c.IsGroup 
+                    ? (c.GroupIconUrl ?? "") 
+                    : (c.Participants.Where(p => p.UserId != userId).Select(p => p.User.AvatarUrl).FirstOrDefault() ?? ""),
+                c.Messages.OrderByDescending(m => m.Timestamp).Select(m => m.Content).FirstOrDefault() ?? "No messages",
                 c.Messages.OrderByDescending(m => m.Timestamp).Select(m => m.Timestamp).FirstOrDefault(),
                 c.Messages.Count(m => !m.IsRead && m.SenderId != userId)
             ))
@@ -76,23 +82,83 @@ public class ChatsController : ControllerBase
     [HttpPost]
     public async Task<IActionResult> CreateChat([FromBody] CreateChatRequest request)
     {
-        var currentUserId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+        try 
+        {
+            var currentUserIdString = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (string.IsNullOrEmpty(currentUserIdString)) 
+            {
+                Console.WriteLine("CreateChat: currentUserIdString is null or empty");
+                return Unauthorized();
+            }
+            
+            var currentUserId = Guid.Parse(currentUserIdString);
+            Console.WriteLine($"CreateChat: currentUserId={currentUserId}, targetUserId={request.UserId}");
 
-        // Check if a direct chat already exists
-        var existingChat = await _context.Chats
-            .Where(c => !c.IsGroup)
-            .Where(c => c.Participants.Any(p => p.UserId == currentUserId) && c.Participants.Any(p => p.UserId == request.UserId))
-            .FirstOrDefaultAsync();
+            // Verify both users exist
+            var currentUserExists = await _context.Users.AnyAsync(u => u.Id == currentUserId);
+            var targetUserExists = await _context.Users.AnyAsync(u => u.Id == request.UserId);
 
-        if (existingChat != null) return Ok(existingChat.Id);
+            if (!currentUserExists) 
+            {
+                Console.WriteLine($"CreateChat: Current user {currentUserId} NOT FOUND in DB. Auto-provisioning...");
+                var email = User.FindFirstValue(ClaimTypes.Email);
+                var name = User.FindFirstValue(ClaimTypes.Name) ?? email?.Split('@')[0] ?? "User";
+                
+                if (string.IsNullOrEmpty(email)) return Unauthorized("Invalid token claims.");
 
-        var chat = new Chat { IsGroup = false };
-        chat.Participants.Add(new ChatParticipant { UserId = currentUserId });
-        chat.Participants.Add(new ChatParticipant { UserId = request.UserId });
+                var newUser = new User 
+                {
+                    Id = currentUserId,
+                    Email = email,
+                    Name = name,
+                    Status = "Available"
+                };
+                _context.Users.Add(newUser);
+                await _context.SaveChangesAsync();
+                Console.WriteLine($"CreateChat: Auto-provisioned user {currentUserId}");
+            }
 
-        _context.Chats.Add(chat);
-        await _context.SaveChangesAsync();
+            if (!targetUserExists) 
+            {
+                Console.WriteLine($"CreateChat: Target user {request.UserId} NOT FOUND in DB");
+                return BadRequest("Target user does not exist in database.");
+            }
 
-        return Ok(chat.Id);
+            // Check if a direct chat already exists
+            var existingChat = await _context.Chats
+                .Where(c => !c.IsGroup)
+                .Where(c => c.Participants.Any(p => p.UserId == currentUserId) && c.Participants.Any(p => p.UserId == request.UserId))
+                .FirstOrDefaultAsync();
+
+            if (existingChat != null) 
+            {
+                Console.WriteLine($"CreateChat: Found existing chat {existingChat.Id}");
+                return Ok(existingChat.Id);
+            }
+
+            var chat = new Chat { 
+                IsGroup = false,
+                CreatedAt = DateTime.UtcNow
+            };
+            
+            _context.Chats.Add(chat);
+            await _context.SaveChangesAsync();
+            Console.WriteLine($"CreateChat: Created new chat {chat.Id}");
+
+            var participant1 = new ChatParticipant { ChatId = chat.Id, UserId = currentUserId };
+            var participant2 = new ChatParticipant { ChatId = chat.Id, UserId = request.UserId };
+
+            _context.ChatParticipants.AddRange(participant1, participant2);
+            await _context.SaveChangesAsync();
+            Console.WriteLine($"CreateChat: Added participants to chat {chat.Id}");
+
+            return Ok(chat.Id);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"CreateChat: ERROR: {ex.Message}");
+            if (ex.InnerException != null) Console.WriteLine($"CreateChat: INNER ERROR: {ex.InnerException.Message}");
+            throw;
+        }
     }
 }

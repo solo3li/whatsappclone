@@ -16,8 +16,14 @@ export default function UpdatesScreen() {
   const [showReactions, setShowReactions] = useState(false);
   const progress = useSharedValue(0);
 
+  const statuses = useStore(state => state.statuses);
+  const fetchStatuses = useStore(state => state.fetchStatuses);
   const statusReactions = useStore(state => state.statusReactions);
   const addStatusReaction = useStore(state => state.addStatusReaction);
+
+  useEffect(() => {
+    fetchStatuses();
+  }, []);
 
   const reactions = selectedStatus ? statusReactions[selectedStatus.id] || [] : [];
   const quickEmojis = ['❤️', '😂', '😮', '😢', '🙏', '👏'];
@@ -77,7 +83,7 @@ export default function UpdatesScreen() {
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       <Text style={[styles.sectionTitle, { color: colors.text }]}>Status</Text>
       <FlatList
-        data={updates}
+        data={statuses}
         keyExtractor={(item) => item.id}
         renderItem={renderItem}
       />

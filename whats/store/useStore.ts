@@ -40,6 +40,24 @@ export interface Chat {
   unread: number;
 }
 
+export interface Status {
+  id: string;
+  user: string;
+  avatar: string;
+  statusImage: string;
+  time: string;
+  isMe?: boolean;
+}
+
+export interface Call {
+  id: string;
+  user: string;
+  avatar: string;
+  time: string;
+  type: 'incoming' | 'outgoing' | 'missed';
+  isVideo: boolean;
+}
+
 interface AppState {
   currentUser: User | null;
   token: string | null;
@@ -50,7 +68,15 @@ interface AppState {
   contacts: User[];
   connection: signalR.HubConnection | null;
   statusReactions: Record<string, { emoji: string, user: string }[]>;
+  statuses: Status[];
+  calls: Call[];
   
+  // WebRTC Signaling State
+  incomingCall: { from: string, offer: any } | null;
+  callAnswer: any | null;
+  iceCandidate: any | null;
+  callHungUp: boolean;
+
   // Auth Actions
   requestOtp: (email: string) => Promise<void>;
   verifyOtp: (email: string, otp: string) => Promise<boolean>;
@@ -75,7 +101,15 @@ interface AppState {
   unblockUser: (userId: string) => Promise<void>;
   
   // Status Actions
+  fetchStatuses: () => Promise<void>;
   addStatusReaction: (statusId: string, emoji: string) => void;
+  
+  // Call Actions
+  fetchCalls: () => Promise<void>;
+  sendCallOffer: (targetUserId: string, offer: any) => Promise<void>;
+  sendCallAnswer: (targetUserId: string, answer: any) => Promise<void>;
+  sendIceCandidate: (targetUserId: string, candidate: any) => Promise<void>;
+  hangUp: (targetUserId: string) => Promise<void>;
   
   // SignalR
   startSignalR: () => Promise<void>;
@@ -91,6 +125,12 @@ export const useStore = create<AppState>((set, get) => ({
   contacts: [],
   connection: null,
   statusReactions: {},
+  statuses: [],
+  calls: [],
+  incomingCall: null,
+  callAnswer: null,
+  iceCandidate: null,
+  callHungUp: false,
 
   requestOtp: async (email) => {
     try {
@@ -269,7 +309,7 @@ export const useStore = create<AppState>((set, get) => ({
   searchUsers: async (query) => {
     try {
       const { token } = get();
-      const response = await axios.get(`${Config.API_URL}/User/search?query=${query}`, {
+      const response = await axios.get(`${Config.API_URL}/Users/search?query=${query}`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       const contacts: User[] = response.data.map((u: any) => ({
@@ -305,6 +345,75 @@ export const useStore = create<AppState>((set, get) => ({
         statusReactions: { ...state.statusReactions, [statusId]: [...reactions, newReaction] }
       };
     });
+  },
+
+  fetchStatuses: async () => {
+    try {
+      const { token } = get();
+      if (!token) return;
+      const response = await axios.get(`${Config.API_URL}/Statuses`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      const statuses: Status[] = response.data.map((s: any) => ({
+        id: s.id,
+        user: s.user.name,
+        avatar: s.user.avatarUrl,
+        statusImage: s.imageUrl,
+        time: new Date(s.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        isMe: s.user.id === get().currentUser?.id
+      }));
+      set({ statuses });
+    } catch (error) {
+      console.error('Fetch statuses failed', error);
+      // Fallback to mock if API fails or returns empty for now
+      if (get().statuses.length === 0) {
+        set({ statuses: [
+          { id: '1', user: 'My Status', avatar: 'https://i.pravatar.cc/150?u=me', statusImage: 'https://picsum.photos/400/800', time: 'Just now', isMe: true },
+          { id: '2', user: 'John Doe', avatar: 'https://i.pravatar.cc/150?u=john', statusImage: 'https://picsum.photos/400/801', time: '10:30 AM' },
+        ]});
+      }
+    }
+  },
+
+  fetchCalls: async () => {
+    try {
+      const { token } = get();
+      if (!token) return;
+      const response = await axios.get(`${Config.API_URL}/Calls`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      const calls: Call[] = response.data.map((c: any) => ({
+        id: c.id,
+        user: c.user.name,
+        avatar: c.user.avatarUrl,
+        time: new Date(c.time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        type: c.type,
+        isVideo: c.isVideo
+      }));
+      set({ calls });
+    } catch (error) {
+      console.error('Fetch calls failed', error);
+    }
+  },
+
+  sendCallOffer: async (targetUserId, offer) => {
+    const { connection } = get();
+    if (connection) await connection.invoke('SendCallOffer', targetUserId, offer);
+  },
+
+  sendCallAnswer: async (targetUserId, answer) => {
+    const { connection } = get();
+    if (connection) await connection.invoke('SendCallAnswer', targetUserId, answer);
+  },
+
+  sendIceCandidate: async (targetUserId, candidate) => {
+    const { connection } = get();
+    if (connection) await connection.invoke('SendIceCandidate', targetUserId, candidate);
+  },
+
+  hangUp: async (targetUserId) => {
+    const { connection } = get();
+    if (connection) await connection.invoke('HangUp', targetUserId);
   },
 
   startSignalR: async () => {
@@ -355,6 +464,23 @@ export const useStore = create<AppState>((set, get) => ({
 
     connection.on('UserStatusChanged', (userId: string, isOnline: boolean, lastSeen?: string) => {
       // Handle presence updates
+    });
+
+    // WebRTC Signaling Handlers
+    connection.on('ReceiveCallOffer', (from, offer) => {
+      set({ incomingCall: { from, offer }, callHungUp: false });
+    });
+
+    connection.on('ReceiveCallAnswer', (from, answer) => {
+      set({ callAnswer: answer });
+    });
+
+    connection.on('ReceiveIceCandidate', (from, candidate) => {
+      set({ iceCandidate: candidate });
+    });
+
+    connection.on('CallHungUp', (from) => {
+      set({ callHungUp: true, incomingCall: null, callAnswer: null, iceCandidate: null });
     });
 
     try {

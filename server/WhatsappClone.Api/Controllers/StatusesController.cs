@@ -1,8 +1,9 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using System.Security.Claims;
-using WhatsappClone.Api.DTOs;
-using WhatsappClone.Api.Services;
+using WhatsappClone.Api.Data;
+using WhatsappClone.Api.Entities;
 
 namespace WhatsappClone.Api.Controllers;
 
@@ -11,41 +12,52 @@ namespace WhatsappClone.Api.Controllers;
 [Route("api/[controller]")]
 public class StatusesController : ControllerBase
 {
-    private readonly IStatusService _statusService;
+    private readonly WhatsappDbContext _context;
 
-    public StatusesController(IStatusService statusService)
+    public StatusesController(WhatsappDbContext context)
     {
-        _statusService = statusService;
+        _context = context;
     }
 
     [HttpGet]
-    public async Task<IActionResult> GetRecent()
+    public async Task<IActionResult> GetStatuses()
     {
-        var userId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
-        var statuses = await _statusService.GetRecentStatusesAsync(userId);
-        return Ok(statuses.Select(s => new {
-            s.Id,
-            s.ImageUrl,
-            s.Caption,
-            s.CreatedAt,
-            User = new UserDto(s.User.Id, s.User.Email, s.User.Name ?? "", s.User.AvatarUrl ?? "", s.User.Status ?? ""),
-            Reactions = s.Reactions.Select(r => new { r.Emoji, r.UserId })
-        }));
+        var statuses = await _context.Statuses
+            .Include(s => s.User)
+            .Where(s => s.ExpiresAt > DateTime.UtcNow)
+            .OrderByDescending(s => s.CreatedAt)
+            .Select(s => new {
+                s.Id,
+                s.ImageUrl,
+                s.CreatedAt,
+                User = new {
+                    s.User.Id,
+                    s.User.Name,
+                    s.User.AvatarUrl
+                }
+            })
+            .ToListAsync();
+
+        return Ok(statuses);
     }
 
     [HttpPost]
-    public async Task<IActionResult> PostStatus([FromBody] StatusUpdateDto request)
+    public async Task<IActionResult> CreateStatus([FromBody] CreateStatusRequest request)
     {
         var userId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
-        await _statusService.CreateStatusAsync(userId, request.Image, request.Caption);
-        return Ok();
-    }
 
-    [HttpPost("{statusId}/react")]
-    public async Task<IActionResult> React(Guid statusId, [FromBody] string emoji)
-    {
-        var userId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
-        await _statusService.AddReactionAsync(statusId, userId, emoji);
-        return Ok();
+        var status = new Status
+        {
+            UserId = userId,
+            ImageUrl = request.ImageUrl,
+            Caption = request.Caption
+        };
+
+        _context.Statuses.Add(status);
+        await _context.SaveChangesAsync();
+
+        return Ok(status.Id);
     }
 }
+
+public record CreateStatusRequest(string ImageUrl, string? Caption);

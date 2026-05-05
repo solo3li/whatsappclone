@@ -1,12 +1,20 @@
 import { View, Text, StyleSheet, FlatList, Image, useColorScheme } from 'react-native';
+import { useEffect } from 'react';
 import Animated, { FadeInLeft } from 'react-native-reanimated';
-import { calls } from '../../data/dummy';
+import { useStore } from '../../store/useStore';
 import Colors from '../../constants/Colors';
 import { Ionicons, MaterialIcons } from '@expo/vector-icons';
 
 export default function CallsScreen() {
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
+
+  const calls = useStore(state => state.calls);
+  const fetchCalls = useStore(state => state.fetchCalls);
+
+  useEffect(() => {
+    fetchCalls();
+  }, []);
 
   const renderItem = ({ item, index }: { item: any; index: number }) => (
     <Animated.View 

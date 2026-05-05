@@ -132,4 +132,30 @@ public class ChatHub : Hub
             await Clients.Users(participants).SendAsync("MessageReaction", messageId, userId, emoji);
         }
     }
+
+    // --- WebRTC Signaling ---
+
+    public async Task SendCallOffer(string targetUserId, object offer)
+    {
+        var senderId = Context.UserIdentifier;
+        await Clients.User(targetUserId).SendAsync("ReceiveCallOffer", senderId, offer);
+    }
+
+    public async Task SendCallAnswer(string targetUserId, object answer)
+    {
+        var senderId = Context.UserIdentifier;
+        await Clients.User(targetUserId).SendAsync("ReceiveCallAnswer", senderId, answer);
+    }
+
+    public async Task SendIceCandidate(string targetUserId, object candidate)
+    {
+        var senderId = Context.UserIdentifier;
+        await Clients.User(targetUserId).SendAsync("ReceiveIceCandidate", senderId, candidate);
+    }
+
+    public async Task HangUp(string targetUserId)
+    {
+        var senderId = Context.UserIdentifier;
+        await Clients.User(targetUserId).SendAsync("CallHungUp", senderId);
+    }
 }

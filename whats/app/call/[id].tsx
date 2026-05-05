@@ -15,6 +15,16 @@ export default function CallScreen() {
   const chats = useStore(state => state.chats);
   const chatInfo = chats.find(c => c.id === id);
 
+  const { 
+    sendCallOffer, 
+    sendCallAnswer, 
+    sendIceCandidate, 
+    hangUp, 
+    callAnswer, 
+    iceCandidate, 
+    callHungUp 
+  } = useStore();
+
   const [permission, requestPermission] = useCameraPermissions();
   const [callDuration, setCallDuration] = useState(0);
 
@@ -23,6 +33,12 @@ export default function CallScreen() {
   const pulseAnim2 = useSharedValue(1);
 
   useEffect(() => {
+    // Initiate Call Offer when screen opens
+    if (id) {
+      console.log(`Initiating ${type} call to ${id}`);
+      sendCallOffer(id as string, { type: 'offer', sdp: 'dummy-sdp-for-prototype' });
+    }
+
     if (!isVideo) {
       pulseAnim1.value = withRepeat(
         withTiming(1.3, { duration: 1500, easing: Easing.out(Easing.ease) }),
@@ -42,8 +58,36 @@ export default function CallScreen() {
       setCallDuration((prev) => prev + 1);
     }, 1000);
 
-    return () => clearInterval(timer);
-  }, [isVideo]);
+    return () => {
+      clearInterval(timer);
+      if (id) hangUp(id as string);
+    };
+  }, [isVideo, id]);
+
+  useEffect(() => {
+    if (callHungUp) {
+      router.back();
+    }
+  }, [callHungUp]);
+
+  useEffect(() => {
+    if (callAnswer) {
+      console.log('Received call answer:', callAnswer);
+      // In a real app with WebRTC, we would setRemoteDescription here
+    }
+  }, [callAnswer]);
+
+  useEffect(() => {
+    if (iceCandidate) {
+      console.log('Received ICE candidate:', iceCandidate);
+      // In a real app with WebRTC, we would addIceCandidate here
+    }
+  }, [iceCandidate]);
+
+  const handleHangUp = () => {
+    if (id) hangUp(id as string);
+    router.back();
+  };
 
   const animatedStyle1 = useAnimatedStyle(() => ({
     transform: [{ scale: pulseAnim1.value }],
@@ -127,7 +171,7 @@ export default function CallScreen() {
           <TouchableOpacity style={styles.controlButton}>
             <Ionicons name="mic-off" size={28} color="#fff" />
           </TouchableOpacity>
-          <TouchableOpacity style={[styles.controlButton, styles.endCallButton]} onPress={() => router.back()}>
+          <TouchableOpacity style={[styles.controlButton, styles.endCallButton]} onPress={handleHangUp}>
             <Ionicons name="call" size={28} color="#fff" style={{ transform: [{ rotate: '135deg' }] }} />
           </TouchableOpacity>
         </View>

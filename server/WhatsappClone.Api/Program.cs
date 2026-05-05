@@ -101,7 +101,8 @@ using (var scope = app.Services.CreateScope())
     {
         var db = scope.ServiceProvider.GetRequiredService<WhatsappDbContext>();
         db.Database.Migrate();
-        Console.WriteLine("Database migration successful.");
+        await DbSeeder.SeedAsync(db);
+        Console.WriteLine("Database migration and seeding successful.");
     }
     catch (Exception ex)
     {
