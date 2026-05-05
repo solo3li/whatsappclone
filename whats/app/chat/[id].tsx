@@ -42,22 +42,26 @@ const FileMessage = ({ name, uri, size, colors }: { name: string, uri: string, s
   );
 };
 
-const Waveform = ({ position, duration, activeColor, inactiveColor }: { position: number, duration: number, activeColor: string, inactiveColor: string }) => {
-  // Generate a random stable waveform for visual effect. 
-  // In a real app with Expo AV, we'd extract metering data. For now, a simulated wave looks great.
-  const [bars] = useState(() => Array.from({ length: 40 }, () => Math.random() * 20 + 5));
+const Waveform = ({ position, duration, activeColor, inactiveColor, meteringData }: { position: number, duration: number, activeColor: string, inactiveColor: string, meteringData?: number[] }) => {
+  const [staticBars] = useState(() => Array.from({ length: 40 }, () => Math.random() * 20 + 5));
+  const currentBars = meteringData && meteringData.length > 0 ? meteringData : staticBars;
+  
+  const paddedBars = currentBars.length < 40 
+    ? [...Array(40 - currentBars.length).fill(5), ...currentBars]
+    : currentBars.slice(currentBars.length - 40);
+
   const progress = duration > 0 ? position / duration : 0;
 
   return (
-    <View style={{ flexDirection: 'row', alignItems: 'center', height: 30, flex: 1, marginHorizontal: 10, gap: 2 }}>
-      {bars.map((height, index) => {
-        const isActive = index / bars.length <= progress;
+    <View style={{ flexDirection: 'row', alignItems: 'center', height: 30, flex: 1, marginHorizontal: 10, gap: 2, overflow: 'hidden' }}>
+      {paddedBars.map((height, index) => {
+        const isActive = duration === 0 || (index / 40) <= progress;
         return (
           <View 
             key={index} 
             style={{ 
               width: 3, 
-              height: height, 
+              height: Math.max(3, height), 
               backgroundColor: isActive ? activeColor : inactiveColor, 
               borderRadius: 2 
             }} 
@@ -68,7 +72,7 @@ const Waveform = ({ position, duration, activeColor, inactiveColor }: { position
   );
 };
 
-const AudioMessage = ({ uri, duration, colors }: { uri: string, duration: number, colors: any }) => {
+const AudioMessage = ({ uri, duration, metering, colors }: { uri: string, duration: number, metering?: number[], colors: any }) => {
   const [sound, setSound] = useState<Audio.Sound | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [position, setPosition] = useState(0);
@@ -121,7 +125,7 @@ const AudioMessage = ({ uri, duration, colors }: { uri: string, duration: number
         <Ionicons name={isPlaying ? "pause" : "play"} size={32} color={colors.secondaryText} />
       </TouchableOpacity>
       
-      <Waveform position={position} duration={duration} activeColor={colors.tint} inactiveColor={colors.divider} />
+      <Waveform position={position} duration={duration} activeColor={colors.tint} inactiveColor={colors.divider} meteringData={metering} />
       
       <View style={{ width: 40, alignItems: 'flex-end' }}>
         <Text style={{ fontSize: 11, color: colors.secondaryText }}>{formatTime(position > 0 ? position : (duration || 0))}</Text>
@@ -146,6 +150,7 @@ export default function ChatScreen() {
   const [recording, setRecording] = useState<Audio.Recording | null>(null);
   const [isRecording, setIsRecording] = useState(false);
   const [recordingDuration, setRecordingDuration] = useState(0);
+  const [meteringData, setMeteringData] = useState<number[]>([]);
   const [previewUri, setPreviewUri] = useState<string | null>(null);
   const [previewSound, setPreviewSound] = useState<Audio.Sound | null>(null);
   const [isPlayingPreview, setIsPlayingPreview] = useState(false);
@@ -185,17 +190,34 @@ export default function ChatScreen() {
           allowsRecordingIOS: true,
           playsInSilentModeIOS: true,
         });
+        
+        setRecordingDuration(0);
+        setMeteringData([]);
+        setIsRecording(true);
+
         const { recording } = await Audio.Recording.createAsync(
-          Audio.RecordingOptionsPresets.HIGH_QUALITY
+          {
+            ...Audio.RecordingOptionsPresets.HIGH_QUALITY,
+            isMeteringEnabled: true,
+          },
+          (status) => {
+            if (status.isRecording) {
+              setRecordingDuration(status.durationMillis);
+              if (status.metering !== undefined) {
+                setMeteringData(prev => {
+                  const min = -60;
+                  const db = Math.max(status.metering as number, min);
+                  const normalized = ((db - min) / Math.abs(min)) * 25 + 5;
+                  const newData = [...prev, normalized];
+                  if (newData.length > 40) return newData.slice(newData.length - 40);
+                  return newData;
+                });
+              }
+            }
+          },
+          50
         );
         setRecording(recording);
-        setIsRecording(true);
-        setRecordingDuration(0);
-        recording.setOnRecordingStatusUpdate((status) => {
-          if (status.isRecording) {
-            setRecordingDuration(status.durationMillis);
-          }
-        });
       } else {
         alert('Microphone permission is required');
       }
@@ -253,6 +275,7 @@ export default function ChatScreen() {
     setPreviewUri(null);
     setIsPlayingPreview(false);
     setRecordingDuration(0);
+    setMeteringData([]);
   };
 
   const sendAudio = () => {
@@ -262,6 +285,7 @@ export default function ChatScreen() {
         text: '',
         audio: previewUri,
         duration: recordingDuration,
+        metering: meteringData,
         sender: 'Me',
         time: '12:00 PM', // Using dummy date
         isMe: true
