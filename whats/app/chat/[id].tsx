@@ -91,6 +91,7 @@ const AudioMessage = ({ uri, duration, metering, colors }: { uri: string, durati
   const [sound, setSound] = useState<Audio.Sound | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [position, setPosition] = useState(0);
+  const [isLoaded, setIsLoaded] = useState(false);
 
   const formatTime = (millis: number) => {
     const totalSeconds = Math.floor(millis / 1000);
@@ -100,29 +101,39 @@ const AudioMessage = ({ uri, duration, metering, colors }: { uri: string, durati
   };
 
   async function togglePlay() {
-    if (sound) {
-      if (isPlaying) {
-        await sound.pauseAsync();
-      } else {
-        await sound.playAsync();
-      }
-    } else {
-      const { sound: newSound } = await Audio.Sound.createAsync(
-        { uri },
-        { shouldPlay: true }
-      );
-      newSound.setOnPlaybackStatusUpdate((status: any) => {
-        if (status.isLoaded) {
-          setPosition(status.positionMillis);
-          setIsPlaying(status.isPlaying);
-          if (status.didJustFinish) {
-            setIsPlaying(false);
-            newSound.setPositionAsync(0);
-            setPosition(0);
-          }
+    try {
+      if (sound && isLoaded) {
+        if (isPlaying) {
+          await sound.pauseAsync();
+        } else {
+          await sound.playAsync();
         }
-      });
-      setSound(newSound);
+      } else {
+        const { sound: newSound } = await Audio.Sound.createAsync(
+          { uri },
+          { shouldPlay: true },
+          (status: any) => {
+            if (status.isLoaded) {
+              setPosition(status.positionMillis);
+              setIsPlaying(status.isPlaying);
+              setIsLoaded(true);
+              if (status.didJustFinish) {
+                setIsPlaying(false);
+                newSound.setPositionAsync(0);
+                setPosition(0);
+              }
+            }
+          }
+        );
+        setSound(newSound);
+      }
+    } catch (error: any) {
+      if (error.message?.includes('interrupted')) {
+        // Ignore AbortError: play() request was interrupted
+      } else {
+        console.error("Audio playback error:", error);
+        alert("Could not play audio. The source might be invalid or unsupported.");
+      }
     }
   }
 
@@ -321,7 +332,10 @@ export default function ChatScreen() {
 
   const sendAudio = () => {
     if (previewUri) {
-      sendMessage(id as string, previewUri, 2); // 2 = Audio
+      sendMessage(id as string, previewUri, 2, { 
+        duration: recordingDuration, 
+        metering: meteringData 
+      }); // 2 = Audio
       cancelPreview();
     }
   };
@@ -706,11 +720,18 @@ const styles = StyleSheet.create({
     padding: 8,
     paddingHorizontal: 12,
     borderRadius: 12,
-    elevation: 1,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 1,
+    ...Platform.select({
+      web: {
+        boxShadow: '0px 1px 1px rgba(0, 0, 0, 0.1)',
+      },
+      default: {
+        elevation: 1,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.1,
+        shadowRadius: 1,
+      }
+    }),
   },
   messageImage: {
     width: 250,
@@ -792,11 +813,18 @@ const styles = StyleSheet.create({
     borderTopRightRadius: 25,
     padding: 20,
     paddingBottom: Platform.OS === 'ios' ? 40 : 20,
-    elevation: 5,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: -2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 10,
+    ...Platform.select({
+      web: {
+        boxShadow: '0px -2px 10px rgba(0, 0, 0, 0.1)',
+      },
+      default: {
+        elevation: 5,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: -2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 10,
+      }
+    }),
   },
   menuItem: {
     flexDirection: 'row',

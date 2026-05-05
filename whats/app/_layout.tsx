@@ -5,7 +5,9 @@ import { StatusBar } from 'expo-status-bar';
 import { useEffect, useState } from 'react';
 import { useStore } from '../store/useStore';
 
-function useProtectedRoute(isAuthenticated: boolean) {
+import { View, ActivityIndicator } from 'react-native';
+
+function useProtectedRoute(isAuthenticated: boolean, isAuthLoading: boolean) {
   const segments = useSegments();
   const router = useRouter();
   const [isNavigationReady, setIsNavigationReady] = useState(false);
@@ -15,7 +17,7 @@ function useProtectedRoute(isAuthenticated: boolean) {
   }, []);
 
   useEffect(() => {
-    if (!isNavigationReady) return;
+    if (!isNavigationReady || isAuthLoading) return;
 
     const inAuthGroup = segments[0] === '(auth)';
 
@@ -24,20 +26,29 @@ function useProtectedRoute(isAuthenticated: boolean) {
     } else if (isAuthenticated && inAuthGroup) {
       router.replace('/(tabs)');
     }
-  }, [isAuthenticated, segments, isNavigationReady]);
+  }, [isAuthenticated, isAuthLoading, segments, isNavigationReady]);
 }
 
 export default function RootLayout() {
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
   const isAuthenticated = useStore((state) => state.isAuthenticated);
+  const isAuthLoading = useStore((state) => state.isAuthLoading);
   const loadStoredAuth = useStore((state) => state.loadStoredAuth);
 
   useEffect(() => {
     loadStoredAuth();
   }, []);
 
-  useProtectedRoute(isAuthenticated);
+  useProtectedRoute(isAuthenticated, isAuthLoading);
+
+  if (isAuthLoading) {
+    return (
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: colors.background }}>
+        <ActivityIndicator size="large" color={colors.tint} />
+      </View>
+    );
+  }
 
   return (
     <>
@@ -50,6 +61,7 @@ export default function RootLayout() {
       }}>
         <Stack.Screen name="(auth)" options={{ headerShown: false }} />
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+        <Stack.Screen name="contacts" options={{ title: 'Select Contact' }} />
         <Stack.Screen name="chat/[id]" options={{ title: '' }} />
         <Stack.Screen name="call/[id]" options={{ presentation: 'fullScreenModal' }} />
         <Stack.Screen name="user/[id]" options={{ title: 'Profile' }} />

@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import axios from 'axios';
 import * as signalR from '@microsoft/signalr';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { Platform } from 'react-native';
 import Config from '../constants/Config';
 
 export interface User {
@@ -62,6 +63,7 @@ interface AppState {
   currentUser: User | null;
   token: string | null;
   isAuthenticated: boolean;
+  isAuthLoading: boolean;
   chats: Chat[];
   messages: Record<string, Message[]>;
   blockedUsers: string[];
@@ -90,7 +92,7 @@ interface AppState {
   createChat: (userId: string) => Promise<string>;
   
   // Message Actions
-  sendMessage: (chatId: string, text: string, type?: number, options?: any) => Promise<void>;
+  sendMessage: (chatId: string, content: string, type?: number, options?: any) => Promise<void>;
   addMessage: (chatId: string, message: any) => void;
   deleteMessage: (chatId: string, messageId: string) => void;
   editMessage: (chatId: string, messageId: string, newText: string) => void;
@@ -119,6 +121,7 @@ export const useStore = create<AppState>((set, get) => ({
   currentUser: null,
   token: null,
   isAuthenticated: false,
+  isAuthLoading: true,
   chats: [],
   messages: {},
   blockedUsers: [],
@@ -179,6 +182,8 @@ export const useStore = create<AppState>((set, get) => ({
       }
     } catch (error) {
       console.error('Load stored auth failed', error);
+    } finally {
+      set({ isAuthLoading: false });
     }
   },
 
@@ -231,6 +236,8 @@ export const useStore = create<AppState>((set, get) => ({
         isMe: m.isMe,
         image: m.image,
         audio: m.audio,
+        duration: m.duration,
+        metering: m.metering ? JSON.parse(m.metering) : undefined,
         fileUri: m.fileUri,
         fileName: m.fileName,
         fileSize: m.fileSize,
@@ -261,9 +268,39 @@ export const useStore = create<AppState>((set, get) => ({
 
   sendMessage: async (chatId, content, type = 0, options?: any) => {
     try {
-      const { connection } = get();
+      const { connection, token } = get();
+
+      // Handle media upload if it's a local URI or blob
+      let finalContent = content;
+      const isLocalUri = content.startsWith('file://') || content.startsWith('content://') || content.startsWith('blob:') || content.startsWith('data:');
+      
+      if (type !== 0 && isLocalUri) {
+        const formData = new FormData();
+        
+        if (Platform.OS === 'web' || content.startsWith('blob:')) {
+          const blobRes = await fetch(content);
+          const blob = await blobRes.blob();
+          formData.append('file', blob, options?.fileName || (type === 1 ? 'image.jpg' : type === 2 ? 'audio.m4a' : 'file'));
+        } else {
+          // @ts-ignore
+          formData.append('file', {
+            uri: content,
+            name: options?.fileName || 'upload',
+            type: type === 1 ? 'image/jpeg' : type === 2 ? 'audio/m4a' : 'application/octet-stream'
+          });
+        }
+
+        const uploadRes = await axios.post(`${Config.API_URL}/Media/upload`, formData, {
+          headers: { 
+            Authorization: `Bearer ${token}`,
+            'Content-Type': 'multipart/form-data'
+          }
+        });
+        finalContent = uploadRes.data.url;
+      }
+
       if (connection && connection.state === signalR.HubConnectionState.Connected) {
-        await connection.invoke('SendMessage', chatId, content, type, options?.mediaUrl, options?.fileName, options?.fileSize);
+        await connection.invoke('SendMessage', chatId, finalContent, type, null, options?.fileName, options?.fileSize, options?.duration, options?.metering ? JSON.stringify(options.metering) : null);
       }
     } catch (error) {
       console.error('Send message failed', error);
@@ -437,6 +474,8 @@ export const useStore = create<AppState>((set, get) => ({
         isMe: m.senderId === get().currentUser?.id,
         image: m.image,
         audio: m.audio,
+        duration: m.duration,
+        metering: m.metering ? JSON.parse(m.metering) : undefined,
         fileUri: m.fileUri,
         fileName: m.fileName,
         fileSize: m.fileSize,
@@ -507,3 +546,4 @@ export const useStore = create<AppState>((set, get) => ({
     }
   }
 }));
+

@@ -56,7 +56,7 @@ public class ChatHub : Hub
         await base.OnDisconnectedAsync(exception);
     }
 
-    public async Task SendMessage(Guid chatId, string content, MessageType type = MessageType.Text, string? mediaUrl = null, string? fileName = null, string? fileSize = null)
+    public async Task SendMessage(Guid chatId, string content, MessageType type = MessageType.Text, string? mediaUrl = null, string? fileName = null, string? fileSize = null, double? duration = null, string? metering = null)
     {
         var senderIdString = Context.UserIdentifier;
         if (string.IsNullOrEmpty(senderIdString)) return;
@@ -70,9 +70,11 @@ public class ChatHub : Hub
             SenderId = senderId,
             Content = type == MessageType.Text ? content : null,
             MessageType = type,
-            MediaUrl = type != MessageType.Text ? content : null, // For simplicity, using content param as URL for media types
+            MediaUrl = type != MessageType.Text ? content : null, 
             FileName = fileName,
             FileSize = fileSize,
+            Duration = duration,
+            Metering = metering,
             Timestamp = DateTime.UtcNow
         };
 
@@ -98,7 +100,9 @@ public class ChatHub : Hub
             audio = message.MessageType == MessageType.Audio ? message.MediaUrl : null,
             fileUri = message.MessageType == MessageType.File ? message.MediaUrl : null,
             fileName = message.FileName,
-            fileSize = message.FileSize
+            fileSize = message.FileSize,
+            duration = message.Duration,
+            metering = message.Metering
         });
     }
 

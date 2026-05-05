@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using WhatsappClone.Api.Data;
 
@@ -10,9 +11,11 @@ using WhatsappClone.Api.Data;
 namespace WhatsappClone.Api.Data.Migrations
 {
     [DbContext(typeof(WhatsappDbContext))]
-    partial class WhatsappDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260505221535_AddDurationAndMetering")]
+    partial class AddDurationAndMetering
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder.HasAnnotation("ProductVersion", "10.0.7");

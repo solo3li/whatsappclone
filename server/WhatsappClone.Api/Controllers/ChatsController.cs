@@ -72,7 +72,9 @@ public class ChatsController : ControllerBase
                 m.FileName,
                 m.FileSize,
                 m.ReplyToId,
-                m.ReplyTo != null ? m.ReplyTo.Content : null
+                m.ReplyTo != null ? m.ReplyTo.Content : null,
+                m.Duration,
+                m.Metering
             ))
             .ToListAsync();
 

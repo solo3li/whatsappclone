@@ -94,6 +94,28 @@ app.UseSwaggerUI(c => {
 
 app.UseCors();
 
+// Ensure wwwroot exists and set it as WebRoot if it's not found
+if (string.IsNullOrEmpty(app.Environment.WebRootPath))
+{
+    app.Environment.WebRootPath = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot");
+}
+
+if (!Directory.Exists(app.Environment.WebRootPath))
+{
+    Directory.CreateDirectory(app.Environment.WebRootPath);
+}
+
+var provider = new Microsoft.AspNetCore.StaticFiles.FileExtensionContentTypeProvider();
+provider.Mappings[".m4a"] = "audio/x-m4a";
+provider.Mappings[".mp3"] = "audio/mpeg";
+provider.Mappings[".wav"] = "audio/wav";
+provider.Mappings[".ogg"] = "audio/ogg";
+
+app.UseStaticFiles(new StaticFileOptions
+{
+    ContentTypeProvider = provider
+});
+
 // Ensure Database is created and migrated
 using (var scope = app.Services.CreateScope())
 {

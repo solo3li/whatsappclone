@@ -36,4 +36,7 @@ public class Message
     public DateTime? ReadAt { get; set; }
     
     public string? Reactions { get; set; } // Store as JSON or comma separated for simplicity in this prototype
+    
+    public double? Duration { get; set; }
+    public string? Metering { get; set; } // Store as JSON string
 }
