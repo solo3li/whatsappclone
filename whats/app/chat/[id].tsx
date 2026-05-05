@@ -1,6 +1,6 @@
 import { View, Text, StyleSheet, ImageBackground, FlatList, TextInput, KeyboardAvoidingView, Platform, useColorScheme, Image, TouchableOpacity } from 'react-native';
 import { useState, useEffect } from 'react';
-import { useLocalSearchParams, Stack } from 'expo-router';
+import { useLocalSearchParams, Stack, useRouter } from 'expo-router';
 import Animated, { FadeInUp, SlideInRight, useSharedValue, useAnimatedStyle, withRepeat, withTiming } from 'react-native-reanimated';
 import * as ImagePicker from 'expo-image-picker';
 import * as DocumentPicker from 'expo-document-picker';
@@ -151,6 +151,7 @@ const AudioMessage = ({ uri, duration, metering, colors }: { uri: string, durati
 
 export default function ChatScreen() {
   const { id } = useLocalSearchParams();
+  const router = useRouter();
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
   
@@ -431,8 +432,12 @@ export default function ChatScreen() {
           ),
           headerRight: () => (
             <View style={{ flexDirection: 'row', gap: 20 }}>
-              <Ionicons name="videocam" size={22} color="#fff" />
-              <Ionicons name="call" size={20} color="#fff" />
+              <TouchableOpacity onPress={() => router.push(`/call/${id}?type=video`)}>
+                <Ionicons name="videocam" size={22} color="#fff" />
+              </TouchableOpacity>
+              <TouchableOpacity onPress={() => router.push(`/call/${id}?type=voice`)}>
+                <Ionicons name="call" size={20} color="#fff" />
+              </TouchableOpacity>
               <Ionicons name="ellipsis-vertical" size={20} color="#fff" />
             </View>
           )
